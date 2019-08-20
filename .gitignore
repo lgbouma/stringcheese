@@ -1,0 +1,8 @@
+*logs*
+*__pycache__*
+*results*
+*.egg*
+build*
+dist*
+data*
+doc*
