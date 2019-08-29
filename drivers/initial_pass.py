@@ -1,13 +1,15 @@
 """
-measure rotation periods for bright, young candidates.
-(in strings, and not in strings).
+Measure rotation periods for bright, young stars in strings. In other words:
+T < 13 7.5 < log(age) < 8.5   (like 30-300 Myr. no younger, b/c reddening.)
 
-as an initial pass, by this I mean:
-    T < 13
-    7.5 < log(age) < 8.5   (like 30-300 Myr. no younger, b/c reddening.)
+usage:
+    python -u initial_pass.py &> logs/{logname}.txt
 """
 
-import os
+###########
+# imports #
+###########
+import os, socket
 from glob import glob
 import numpy as np, pandas as pd
 from numpy import array as nparr
@@ -20,6 +22,16 @@ from stringcheese.wrangling import get_fficutout as gfc
 from stringcheese.wrangling import get_lc_given_fficutout as glgf
 from stringcheese import verification_page as vp
 from stringcheese import pipeline_utils as pu
+
+host = socket.gethostname()
+if 'phtess2' in host:
+    basedir = '/home/lbouma/stringcheese_cutouts/'
+elif 'brik' in host:
+    basedir = '/home/luke/stringcheese_cutouts/'
+
+###############
+# main driver #
+###############
 
 def main():
     source_df = pd.read_csv('../data/kounkel_table1_sourceinfo.csv')
@@ -47,12 +59,13 @@ def main():
         group_id = str(r['group_id'])
 
         #FIXME
-        if source_id != 5790086712143142016:
+        # if group_id != 'AB_Dor':
+        #     continue
+        if source_id != 5579169050153502976:
             continue
 
         c_obj = SkyCoord(ra, dec, unit=(u.deg, u.deg), frame='icrs')
 
-        basedir = '/home/lbouma/stringcheese_cutouts/'
         workingdir = os.path.join(basedir,
                                   'group{}_name{}'.format(group_id, name))
         if not os.path.exists(workingdir):
