@@ -106,14 +106,20 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
 
     rel_flux_errs = [np.sqrt(f)/np.nanmedian(f) for f in fluxs]
 
+    #
+    # all except last are output as a 1-dimensional array. time, quality, flux,
+    # rel_flux, and rel_flux_err are all of same length. xs and ys are length
+    # n_sectors; they are the positions used in the aperture.
+    #
     out_dict = {
-        'time':np.concatenate(times),
-        'quality':np.concatenate(qualitys),
-        'flux':np.concatenate(fluxs),
-        'rel_flux':np.concatenate(rel_fluxs),
-        'rel_flux_err':np.concatenate(rel_flux_errs),
-        'x':np.concatenate(xs),
-        'y':np.concatenate(ys)
+        'time':np.concatenate(times).flatten(),
+        'quality':np.concatenate(qualitys).flatten(),
+        'flux':np.concatenate(fluxs).flatten(),
+        'rel_flux':np.concatenate(rel_fluxs).flatten(),
+        'rel_flux_err':np.concatenate(rel_flux_errs).flatten(),
+        'x':np.array(xs).flatten(),
+        'y':np.array(ys).flatten(),
+        'cutout_wcss': cutout_wcss
     }
 
     with open(outpath, 'wb') as f:
