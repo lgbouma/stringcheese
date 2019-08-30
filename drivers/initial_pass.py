@@ -18,6 +18,9 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.stats import LombScargle
 
+from astroquery.gaia import Gaia
+from astroquery.mast import Catalogs
+
 from stringcheese.wrangling import get_fficutout as gfc
 from stringcheese.wrangling import get_lc_given_fficutout as glgf
 from stringcheese import verification_page as vp
@@ -59,10 +62,10 @@ def main():
         group_id = str(r['group_id'])
 
         #FIXME
-        # if group_id != 'AB_Dor':
-        #     continue
-        if source_id != 5579169050153502976:
+        if name != 'AB_Dor':
             continue
+        # if source_id != 5579169050153502976:
+        #     continue
 
         c_obj = SkyCoord(ra, dec, unit=(u.deg, u.deg), frame='icrs')
 
@@ -73,6 +76,13 @@ def main():
         workingdir = os.path.join(workingdir, str(source_id))
         if not os.path.exists(workingdir):
             os.mkdir(workingdir)
+
+        outvppath = os.path.join(
+            workingdir, 'verification_page_{}.png'.format(source_id)
+        )
+        if os.path.exists(outvppath):
+            print('found {}, continue'.format(outvppath))
+            continue
 
         #
         # if you already downloaded ffi cutouts for this object, dont get any
@@ -92,17 +102,25 @@ def main():
         cutouts = glob(os.path.join(workingdir,'*.fits'))
         if len(cutouts)>=1:
             d = glgf.get_lc_given_fficutout(workingdir, cutouts, c_obj,
-                                            return_pkl=True)
+                                            return_pkl=False)
         else:
             print('WRN! did not find fficutout for {}'.format(workingdir))
 
+        if not isinstance(d, dict):
+            print('WRN! got bad light curve for {}. skipping.'.
+                  format(workingdir))
+            continue
+
         outpath = os.path.join(workingdir, 'GLS_rotation_period.results')
+
         #
         # do Lomb scargle w/ uniformly weighted points.
         #
         ls = LombScargle(d['time'], d['rel_flux'], d['rel_flux_err'])
         period_min = 0.1
-        period_max = 0.9*(np.max(d['time']) - np.min(d['time']))
+        period_max = np.min([
+            0.9*(np.max(d['time']) - np.min(d['time'])), 20
+        ])
         freq, power = ls.autopower(minimum_frequency=1/period_max,
                                    maximum_frequency=1/period_min)
         ls_fap = ls.false_alarm_probability(power.max())
@@ -112,8 +130,37 @@ def main():
         d['ls_period'] = ls_period
 
         #
-        # TODO: might as well try to get TIC / Gaia Teffs at this point...
-        # FIXME
+        # try to get TIC Teff. search TIC within 5 arcseconds, then take the
+        # Gaia-ID match.  (removing sources with no gaia ID, which do exist in
+        # TICv8.
+        #
+        radius = 5.0*u.arcsecond
+
+        stars = Catalogs.query_region(
+            "{} {}".format(float(c_obj.ra.value), float(c_obj.dec.value)),
+            catalog="TIC",
+            radius=radius
+        )
+
+        nbhr_source_ids = np.array(stars['GAIA'])
+
+        stars = stars[ nbhr_source_ids != '' ]
+        nbhr_source_ids = nbhr_source_ids[ nbhr_source_ids != '' ]
+
+        sel = nbhr_source_ids.astype(int) == source_id
+
+        if len(sel[sel])==1:
+            star = stars[sel]
+        else:
+            raise NotImplementedError('did not get any TIC match. why?')
+
+        teff = float(star['Teff'])
+        if not isinstance(teff,float) and np.isfinite(teff):
+            raise NotImplementedError('got nan TIC teff. what do?')
+
+
+        #
+        # make "check plot" analog for visual inspection
         #
         outd = {
             'ls_fap': d['ls_fap'],
@@ -122,16 +169,16 @@ def main():
             'ra': ra,
             'dec': dec,
             'name': name,
-            'group_id': group_id
+            'group_id': group_id,
+            'teff':teff
         }
         pu.save_status(outpath, 'lomb-scargle', outd)
 
-        #
-        # make "check plot" analog for visual inspection
-        #
-        vp.generate_verification_page(d, ls, freq, power, cutouts)
+        vp.generate_verification_page(d, ls, freq, power, cutouts, c_obj,
+                                      outvppath, outd)
 
         #TODO: maybe only make plot if significant FAP?
+        #TODO: and only if teff is within some range...
 
 
         #FIXME: need to verify your photometry implementation got the 0.5 pixel

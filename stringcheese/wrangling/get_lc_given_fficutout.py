@@ -7,6 +7,8 @@ import pickle, os
 
 from photutils import aperture_photometry, CircularAperture, CircularAnnulus
 
+from astrobase.lcmath import sigclip_magseries_with_extparams
+
 def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     """
     Do simple aperture photometry on FFI cutouts. Uses world's simplest
@@ -17,7 +19,9 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     the pickle is found to already exist, and return_pkl is True, it is loaded
     and returned
 
+    ----------
     args:
+
         workingdir (str): directory to which the light curve is written
 
         cutouts (list of length at least 1): paths to fficutouts. assumed to be
@@ -25,6 +29,22 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
 
         c_obj (astropy.skycoord): coordinate of object, used to project wcs to
         image.
+
+    ----------
+    returns:
+
+        if fails to get a good light curve, returns None. else, returns
+        dictionary with the following keys.
+
+        'time': time array
+        'quality': quality flag array
+        'flux': sigma-clipped flux (counts)
+        'rel_flux': sigma-clipped relative flux
+        'rel_flux_err': sigma-clipped relative flux errors
+        'x': location of aperture used to extract light curve
+        'y': ditto
+        'median_imgs': list of median images of the stack used to extract apertures
+        'cutout_wcss': WCSs to the above images
     """
 
     outpath = os.path.join(workingdir, 'multisector_lc.pkl')
@@ -58,13 +78,16 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
 
     # get the location to put down the apertures
     try:
-        xs, ys = [
-            c_wcs.all_world2pix(c_obj.icrs.ra, c_obj.icrs.dec, 0)
-            for c_wcs in cutout_wcss
-        ]
+        xs, ys = [], []
+        for cutout_wcs in cutout_wcss:
+            _x, _y = cutout_wcs.all_world2pix(
+                c_obj.icrs.ra, c_obj.icrs.dec, 0
+            )
+            xs.append(_x)
+            ys.append(_y)
     except Exception as e:
         print('ERR! wcs all_world2pix got {}'.format(repr(e)))
-        return
+        import IPython; IPython.embed()
 
     #
     # plop down a 3 pixel circular aperture at the locations. then make the
@@ -76,6 +99,7 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     ]
 
     fluxs = []
+    median_imgs = []
     # iterate over sectors
     for img, bkgd, aper in zip(img_fluxs, bkgd_fluxs, circ_apertures):
 
@@ -91,38 +115,75 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
 
         fluxs.append(np.array(s_flux))
 
-    #
-    # FIXME: might want to
-    # now take only quality==0 cadences. maybe mask orbit edges too.
-    # oh and stitch sectors together!
-    #
-
-    # time = time[quality == 0]
-    # flux = flux[quality == 0]
-    # flux_err = flux_err[quality == 0]
+        median_img = np.median(img_stack, axis=0)
+        median_imgs.append(median_img)
 
     # normalize each sector by its median
     rel_fluxs = [f/np.nanmedian(f) for f in fluxs]
-
     rel_flux_errs = [np.sqrt(f)/np.nanmedian(f) for f in fluxs]
 
     #
-    # all except last are output as a 1-dimensional array. time, quality, flux,
-    # rel_flux, and rel_flux_err are all of same length. xs and ys are length
-    # n_sectors; they are the positions used in the aperture.
+    # stitch sectors together and take only quality==0 cadences.
+    # sigma clip out any ridiculous outliers via [20sigma, 20sigma] symmetric
+    # clip.
+    #
+    time = np.concatenate(times).flatten()
+    quality = np.concatenate(qualitys).flatten()
+    flux = np.concatenate(fluxs).flatten()
+    rel_flux = np.concatenate(rel_fluxs).flatten()
+    rel_flux_err = np.concatenate(rel_flux_errs).flatten()
+
+    sel = (quality == 0)
+
+    time = time[sel]
+    flux = flux[sel]
+    rel_flux = rel_flux[sel]
+    rel_flux_err = rel_flux_err[sel]
+    quality = quality[sel]
+
+    stime, srel_flux, srel_flux_err, [sflux, squality] = (
+        sigclip_magseries_with_extparams(
+        time, rel_flux, rel_flux_err, [flux, quality],
+        sigclip=[20,20], iterative=False, magsarefluxes=True)
+    )
+
+    if not np.any(median_imgs[0]) and np.any(sflux):
+        print('somehow getting nan image but finite flux')
+        import IPython; IPython.embed()
+
+
+    # NOTE: might still want to mask orbit edges...
+
+    #
+    # 1-dimensional arrays:
+    # time, quality, flux, rel_flux, and rel_flux_err are all of same length.
+    #
+    # xs and ys are length n_sectors; they are the positions used in the
+    # aperture.
+    #
+    # median_imgs is list of length n_sectors, for which each entry is the
+    # median image in that sector.
+    #
+    # cutout_wcss is list of length n_sectors, each entry is the WCS
+    # corresponding to median_image
     #
     out_dict = {
-        'time':np.concatenate(times).flatten(),
-        'quality':np.concatenate(qualitys).flatten(),
-        'flux':np.concatenate(fluxs).flatten(),
-        'rel_flux':np.concatenate(rel_fluxs).flatten(),
-        'rel_flux_err':np.concatenate(rel_flux_errs).flatten(),
+        'time':stime,
+        'quality':squality,
+        'flux':sflux,
+        'rel_flux':srel_flux,
+        'rel_flux_err':srel_flux_err,
         'x':np.array(xs).flatten(),
         'y':np.array(ys).flatten(),
+        'median_imgs': median_imgs,
         'cutout_wcss': cutout_wcss
     }
 
     with open(outpath, 'wb') as f:
         pickle.dump(out_dict, f)
 
-    return out_dict
+    if len(stime) == len(sflux) == 0:
+        return None
+
+    else:
+        return out_dict
