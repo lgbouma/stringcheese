@@ -54,6 +54,11 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     #  row 0: entire light curve (with horiz bar showing rotation period)
     ax0.scatter(lcd['time'], lcd['rel_flux'], c='k', alpha=1.0, zorder=2, s=10,
                 rasterized=True, linewidths=0)
+
+    epoch = np.nanmin(lcd['time']) + lcd['ls_period']
+    yval = np.max(lcd['rel_flux']) + 0.5*np.std(lcd['rel_flux'])
+    ax0.plot([epoch, epoch+lcd['ls_period']], [yval, yval], color='red', lw=2)
+
     ax0.set_xlabel('Time [BJD$_{\mathrm{TDB}}$]')
     ax0.set_ylabel('Relative flux')
 
