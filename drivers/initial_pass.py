@@ -3,7 +3,7 @@ Measure rotation periods for bright, young stars in strings. In other words:
 T < 13 7.5 < log(age) < 8.5   (like 30-300 Myr. no younger, b/c reddening.)
 
 usage:
-    python -u initial_pass.py &> logs/{logname}.txt
+    python -u initial_pass.py &> logs/make_ABDor_pages.log &
 """
 
 ###########
@@ -116,14 +116,14 @@ def main():
         #
         # do Lomb scargle w/ uniformly weighted points.
         #
-        ls = LombScargle(d['time'], d['rel_flux'], d['rel_flux_err'])
+        ls = LombScargle(d['time'], d['rel_flux'])
         period_min = 0.1
         period_max = np.min([
             0.9*(np.max(d['time']) - np.min(d['time'])), 20
         ])
         freq, power = ls.autopower(minimum_frequency=1/period_max,
                                    maximum_frequency=1/period_min)
-        ls_fap = ls.false_alarm_probability(power.max())
+        ls_fap = ls.false_alarm_probability(power.max(), method='baluev')
         ls_period = 1/freq[np.argmax(power)]
 
         d['ls_fap'] = ls_fap

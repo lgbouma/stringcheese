@@ -65,7 +65,7 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     img_fluxs = [iu.get_data_keyword(f, 'FLUX') for f in cutouts]
 
     # for the background, just take the median of the image. very simple.
-    bkgd_fluxs = [np.array([np.median(img_flux[ix, :, :]) for ix in
+    bkgd_fluxs = [np.array([np.nanmedian(img_flux[ix, :, :]) for ix in
                             range(len(img_flux))]) for img_flux in img_fluxs]
 
     img_flux_errs = [iu.get_data_keyword(f, 'FLUX_ERR') for f in cutouts]
@@ -115,7 +115,7 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
 
         fluxs.append(np.array(s_flux))
 
-        median_img = np.median(img_stack, axis=0)
+        median_img = np.nanmedian(img_stack, axis=0)
         median_imgs.append(median_img)
 
     # normalize each sector by its median

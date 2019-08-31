@@ -51,10 +51,13 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     ax2 = plt.subplot2grid((2, 3), (1, 1))
     ax3 = plt.subplot2grid((2, 3), (1, 2), projection=cutout_wcs)
 
-    #  row 0: entire light curve (with horiz bar showing rotation period)
+    #
+    # row 0: entire light curve (with horiz bar showing rotation period)
+    #
     ax0.scatter(lcd['time'], lcd['rel_flux'], c='k', alpha=1.0, zorder=2, s=10,
                 rasterized=True, linewidths=0)
 
+    # add the bar showing the derived period
     epoch = np.nanmin(lcd['time']) + lcd['ls_period']
     yval = np.max(lcd['rel_flux']) + 0.5*np.std(lcd['rel_flux'])
     ax0.plot([epoch, epoch+lcd['ls_period']], [yval, yval], color='red', lw=2)
@@ -62,7 +65,9 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     ax0.set_xlabel('Time [BJD$_{\mathrm{TDB}}$]')
     ax0.set_ylabel('Relative flux')
 
+    #
     # row 1, col 0: lomb scargle periodogram
+    #
     ax1.plot(1/freq, power, c='k')
     ax1.set_xscale('log')
     ax1.text(0.03, 0.97, 'FAP={:.1e}\nP={:.1f}d'.format(
@@ -72,7 +77,9 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     ax1.set_xlabel('Period [day]')
     ax1.set_ylabel('LS power')
 
+    #
     # row 1, col 1: phased light curve 
+    #
     phzd = phase_magseries(lcd['time'], lcd['rel_flux'], lcd['ls_period'],
                            lcd['time'][np.argmin(lcd['rel_flux'])], wrap=False,
                            sort=True)
@@ -123,12 +130,12 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
 
     img = lcd['median_imgs'][0]
 
+    # some images come out as nans.
+    if np.all(np.isnan(img)):
+        img = np.ones_like(img)
+
     interval = vis.PercentileInterval(99.9)
-    try:
-        vmin,vmax = interval.get_limits(img)
-    except Exception as e:
-        print(e)
-        import IPython; IPython.embed()
+    vmin,vmax = interval.get_limits(img)
     norm = vis.ImageNormalize(
         vmin=vmin, vmax=vmax, stretch=vis.LogStretch(1000))
 
