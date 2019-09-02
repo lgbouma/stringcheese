@@ -15,6 +15,11 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     background subtraction -- the cutout median. Imposes an aperture radius of
     3 pixels. Invents the error bars as 1/sqrt(n_counts).
 
+    If multi-sector, each sector is normalized by its median. Sectors are
+    stitched together, and only quality==0 cadences are taken. Ridiculous
+    outliers are sigma clipped out via a [20sigma, 20sigma] symmetric
+    clip on the stitched light curve.
+
     Saves the lightcurve and related data to a pickle file, in workingdir. If
     the pickle is found to already exist, and return_pkl is True, it is loaded
     and returned
