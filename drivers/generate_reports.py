@@ -76,6 +76,15 @@ def main():
 
         c_obj = SkyCoord(ra, dec, unit=(u.deg, u.deg), frame='icrs')
 
+        #
+        # require that we are on-silicon. for year 1, this roughly means --
+        # were are in southern ecliptic hemisphere
+        #
+        if c_obj.barycentrictrueecliptic.lat > 0*u.deg:
+            print('group{}, {}: found in northern hemisphere. skip!'.
+                  format(group_id, name))
+            continue
+
         workingdir = os.path.join(basedir,
                                   'group{}_name{}'.format(group_id, name))
         if not os.path.exists(workingdir):
@@ -126,7 +135,7 @@ def main():
         ls = LombScargle(d['time'], d['rel_flux'])
         period_min = 0.1
         period_max = np.min([
-            0.9*(np.max(d['time']) - np.min(d['time'])), 20
+            0.9*(np.max(d['time']) - np.min(d['time'])), 16
         ])
         freq, power = ls.autopower(minimum_frequency=1/period_max,
                                    maximum_frequency=1/period_min)
