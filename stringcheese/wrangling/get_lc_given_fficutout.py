@@ -9,6 +9,8 @@ from photutils import aperture_photometry, CircularAperture, CircularAnnulus
 
 from astrobase.lcmath import sigclip_magseries_with_extparams
 
+from stringcheese import lcutils as lcu
+
 def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     """
     Do simple aperture photometry on FFI cutouts. Uses world's simplest
@@ -152,12 +154,46 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
         sigclip=[20,20], iterative=False, magsarefluxes=True)
     )
 
+    #
+    # require finite fluxes. then mask gap edges. if you get no finite values,
+    # save the dud pickle and return None.
+    #
+    sel = np.isfinite(srel_flux)
+
+    stime = stime[sel]
+    sflux = sflux[sel]
+    srel_flux = srel_flux[sel]
+    srel_flux_err = srel_flux_err[sel]
+    squality = squality[sel]
+
+    if len(stime) == len(sflux) == 0:
+
+        out_dict = {
+            'time':stime,
+            'quality':squality,
+            'flux':sflux,
+            'rel_flux':srel_flux,
+            'rel_flux_err':srel_flux_err,
+            'x':np.array(xs).flatten(),
+            'y':np.array(ys).flatten(),
+            'median_imgs': median_imgs,
+            'cutout_wcss': cutout_wcss
+        }
+
+        with open(outpath, 'wb') as f:
+            pickle.dump(out_dict, f)
+
+        return None
+
     if not np.any(median_imgs[0]) and np.any(sflux):
         print('somehow getting nan image but finite flux')
         import IPython; IPython.embed()
 
-
-    # NOTE: might still want to mask orbit edges...
+    stime, srel_flux, [srel_flux_err, sflux, squality] = (
+        lcu.mask_timegap_edges(stime, srel_flux,
+                               othervectors=[srel_flux_err, sflux, squality],
+                               gap=0.5, padding=12/(24))
+    )
 
     #
     # 1-dimensional arrays:
