@@ -18,3 +18,6 @@ for g in $groupdirs; do
   ln -s $g/*/*png $outdir/. 2>/dev/null
 
 done
+
+# print the output
+for i in group???_namenan; do echo $i: `ls $i/*png | wc -l` ; done

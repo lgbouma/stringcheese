@@ -139,6 +139,13 @@ def main():
         ])
         freq, power = ls.autopower(minimum_frequency=1/period_max,
                                    maximum_frequency=1/period_min)
+        try:
+            _ = power.max()
+        except ValueError:
+            print('WRN! got bad Lomb-Scargle for {}. skipping.'.
+                  format(workingdir))
+            continue
+
         ls_fap = ls.false_alarm_probability(power.max(), method='baluev')
         ls_period = 1/freq[np.argmax(power)]
 
