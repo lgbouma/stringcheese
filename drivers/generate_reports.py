@@ -57,6 +57,10 @@ def main():
     sdf2 = df2[(df2['age']>7.5) & (df2['age']<8.5)]
     sdf2_str = sdf2[sdf2['string']=='y']
 
+    close_middle_aged = [
+        1005, 208, 506, 424, 676, 507, 594, 209, 425, 595, 677, 905, 45, 7, 63
+    ]
+
     # now given the gaia ids, get the rotation periods
     for ix, r in sdf.iterrows():
 
@@ -66,9 +70,14 @@ def main():
         group_id = str(r['group_id'])
 
         #FIXME
-        # require that we only look at things Kounkel labelled as strings
-        if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
+        # require that we ony look at close, middle-aged objects as flagged
+        # from glue visualizations
+        if int(group_id) not in close_middle_aged:
             continue
+
+        ## require that we only look at things Kounkel labelled as strings
+        #if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
+        #    continue
         #if name != 'AB_Dor':
         #    continue
         # if source_id != 5579169050153502976:
