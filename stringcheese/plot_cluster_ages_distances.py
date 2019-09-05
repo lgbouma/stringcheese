@@ -54,7 +54,7 @@ ax.set_ylabel('Age [Gyr]')
 
 ax.set_xlim([10,2500])
 
-ax.set_title('black: Curtis+19 fig 1. blue: CK19 table 2 (square=is_str).'
+ax.set_title('black: famous clusters/assocs. blue: CK19 table 2 (square=is_str).'
              '\norange: CK19 table 2, and verified to have strong rotators.',
              fontsize='x-small')
 
