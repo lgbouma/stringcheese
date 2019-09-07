@@ -53,7 +53,7 @@ def get_my_data(groupid=113, groupname='nan'):
     # NOTE: might need to fix this date-based naming convention...
     classifixndir = (
         '../results/manual_classification/'
-        '20190905_group{}_name{}_classification/'.format(groupid, groupname)
+        '20190907_group{}_name{}_classification/'.format(groupid, groupname)
     )
 
     gd_paths = glob(os.path.join(classifixndir,'*good*.png'))
