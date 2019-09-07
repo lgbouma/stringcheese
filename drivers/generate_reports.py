@@ -40,9 +40,9 @@ def main():
     source_df = pd.read_csv('../data/kounkel_table1_sourceinfo.csv')
 
     sel = (
-        (source_df['Tmag_pred'] < 13)
+        (source_df['Tmag_pred'] < 14)
         &
-        (source_df['age'] < 9.0)
+        (source_df['age'] < 9.2)
         &
         (source_df['age'] > 7.5)
     )
@@ -61,6 +61,12 @@ def main():
         1005, 208, 506, 424, 676, 507, 594, 209, 425, 595, 677, 905, 45, 7, 63
     ]
 
+    # older (like age >~8.4), and a bit further... like max 
+    subset4 = [
+        1345, 1273, 1274, 1346, 906, 784, 1089, 508, 678, 509, 1006, 907, 785,
+        786
+    ]
+
     # now given the gaia ids, get the rotation periods
     for ix, r in sdf.iterrows():
 
@@ -74,8 +80,10 @@ def main():
         # require that we ony look at close, middle-aged objects as flagged
         # from glue visualizations
 
-        if int(group_id) not in close_middle_aged:
+        if int(group_id) not in subset4:
             continue
+        #if int(group_id) not in close_middle_aged:
+        #    continue
 
         #if int(group_id) != 113:
         #    continue
