@@ -97,6 +97,14 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
     praesepe_df, pleiades_df = get_reference_data()
     group113_df = get_my_data(groupid=groupid, groupname=groupname)
+    kc19_df = pd.read_csv('../data/string_table2.csv')
+
+    row = kc19_df[kc19_df['group_id'] == groupid]
+    age = 10**(float(row['age']))
+    age_gyr = age/(1e9)
+    age_myr = age_gyr*1e3
+
+    ##########################################
 
     plt.close('all')
     f,ax = plt.subplots(figsize=(4,3))
@@ -126,6 +134,11 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
     ax.set_xlabel('Effective temperature [K]')
     ax.set_ylabel('Rotation period [days]')
+
+    titlestr = 'Name: {}. KC19 isochrone age: {:d} Myr.'.format(
+        groupname, int(age_myr)
+    )
+    ax.set_title(titlestr, fontsize='x-small')
 
     ax.get_yaxis().set_tick_params(which='both', direction='in',
                                    labelsize='small', top=True, right=True)
