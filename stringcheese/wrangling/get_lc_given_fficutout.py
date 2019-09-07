@@ -193,7 +193,9 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     #
     ngroups, groups = find_lc_timegroups(time, mingap=0.5)
 
-    rel_flux_iqrs = [iqr(rel_flux[group], rng=(25,75)) for group in groups]
+    rel_flux_iqrs = nparr([
+        iqr(rel_flux[group], rng=(25,75)) for group in groups]
+    )
 
     if ngroups >= 3:
 
