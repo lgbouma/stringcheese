@@ -2,14 +2,20 @@ from astropy.io import fits
 import astrobase.imageutils as iu
 from astropy import wcs
 import numpy as np
+from numpy import array as nparr
 
 import pickle, os
 
 from photutils import aperture_photometry, CircularAperture, CircularAnnulus
 
-from astrobase.lcmath import sigclip_magseries_with_extparams
+from astrobase.lcmath import (
+    sigclip_magseries_with_extparams, find_lc_timegroups
+)
+from numpy.polynomial.legendre import Legendre
 
 from stringcheese import lcutils as lcu
+
+from scipy.stats import iqr
 
 def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     """
@@ -17,14 +23,33 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     background subtraction -- the cutout median. Imposes an aperture radius of
     3 pixels. Invents the error bars as 1/sqrt(n_counts).
 
-    If multi-sector, each sector is normalized by its median. Sectors are
-    stitched together, and only quality==0 cadences are taken. Ridiculous
-    outliers are sigma clipped out via a [20sigma, 20sigma] symmetric
-    clip on the stitched light curve.
+    To clean up the light curve, the following steps did a decent job:
 
-    Saves the lightcurve and related data to a pickle file, in workingdir. If
-    the pickle is found to already exist, and return_pkl is True, it is loaded
-    and returned
+    If multi-sector, each sector is normalized by its median. Sectors are
+    then stitched together, and only quality==0 cadences are taken.
+    If any "timegroup" (usually sectors, but not strictly -- here I define it
+    by 0.5 day gaps) has much worse interquartile range than the other (>5x the
+    median IQR), drop that timegroup. This usually means that the star was on
+    bad pixels, or the edge of the detector, or something similar for one
+    sector.
+
+    Then, sigma clip out any ridiculous outliers via [7sigma, 7sigma] symmetric
+    clip.
+
+    Then, required all fluxes and errors were finite, and for each timegroup
+    masked out 0.5 days at the beginning, and 0.5 days at the end. This makes
+    the gaps bigger, but mostly throws out ramp systematic-infested data that
+    othewise throws off the period measurement.
+
+    Finally, an apparently relatively common long-term systematic in these LCs
+    looks just like a linear slope over the course of an orbit. (Maybe b/c
+    stars are moving, but aperture center is not? Unclear.) Therefore, to
+    detrend, I fit out a LINE in time from each time group, if the group has at
+    least two days worth of data. (Not if shorter, to avoid overfitting).
+
+    Then, save the lightcurve and related data to a pickle file, in workingdir.
+    If the pickle is found to already exist, and return_pkl is True, it is
+    loaded and returned
 
     ----------
     args:
@@ -46,8 +71,11 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
         'time': time array
         'quality': quality flag array
         'flux': sigma-clipped flux (counts)
-        'rel_flux': sigma-clipped relative flux
+        'rel_flux': sigma-clipped relative flux, fully detrended
         'rel_flux_err': sigma-clipped relative flux errors
+        'predetrending_time':
+        'predetrending_rel_flux': before fitting out the line, rel flux values
+        'predetrending_rel_flux_err':
         'x': location of aperture used to extract light curve
         'y': ditto
         'median_imgs': list of median images of the stack used to extract apertures
@@ -65,7 +93,7 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
         return out_dict
 
     if len(cutouts) == 0:
-        raise AssertionError('something wrong in tesscut! FIXME')
+        raise AssertionError('something wrong in tesscut! fix this!')
 
     # img_flux and img_flux_err are image cubes of (time x spatial x spatial).
     # make lists of them for each sector.
@@ -130,9 +158,7 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     rel_flux_errs = [np.sqrt(f)/np.nanmedian(f) for f in fluxs]
 
     #
-    # stitch sectors together and take only quality==0 cadences.
-    # sigma clip out any ridiculous outliers via [20sigma, 20sigma] symmetric
-    # clip.
+    # concatenate sectors together and take only quality==0 cadences.
     #
     time = np.concatenate(times).flatten()
     quality = np.concatenate(qualitys).flatten()
@@ -148,10 +174,61 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     rel_flux_err = rel_flux_err[sel]
     quality = quality[sel]
 
+    #
+    # sort everything into time order
+    #
+    sind = np.argsort(time)
+
+    time = time[sind]
+    quality = quality[sind]
+    flux = flux[sind]
+    rel_flux = rel_flux[sind]
+    rel_flux_err = rel_flux_err[sind]
+
+    #
+    # if any "timegroup" (usually sectors, but not strictly -- here I define it
+    # by 0.5 day gaps) has much worse interquartile range, drop it. This
+    # usually means that the star was on bad pixels, or the edge of the
+    # detector, or something similar for one sector.
+    #
+    ngroups, groups = find_lc_timegroups(time, mingap=0.5)
+
+    rel_flux_iqrs = [iqr(rel_flux[group], rng=(25,75)) for group in groups]
+
+    if ngroups >= 3:
+
+        median_iqr = np.nanmedian(rel_flux_iqrs)
+
+        bad_groups = (rel_flux_iqrs > 5*median_iqr)
+
+        if len(bad_groups[bad_groups]) > 0:
+            print('WRN! got {} bad time-groups. dropping them.'.
+                  format(len(bad_groups[bad_groups])))
+
+            gd_inds = nparr(groups)[~bad_groups]
+
+            time = np.concatenate([time[gd] for gd in gd_inds]).flatten()
+            quality = np.concatenate([quality[gd] for gd in gd_inds]).flatten()
+            flux = np.concatenate([flux[gd] for gd in gd_inds]).flatten()
+            rel_flux = np.concatenate([rel_flux[gd] for gd in gd_inds]).flatten()
+            rel_flux_err = np.concatenate([rel_flux_err[gd] for gd in gd_inds]).flatten()
+
+        else:
+            # did not find any bad groups
+            pass
+
+    else:
+        # trickier to detect outlying sectors with fewer groups
+        pass
+
+    #
+    # sigma clip out any ridiculous outliers via [7sigma, 7sigma] symmetric
+    # clip.
+    #
     stime, srel_flux, srel_flux_err, [sflux, squality] = (
         sigclip_magseries_with_extparams(
         time, rel_flux, rel_flux_err, [flux, quality],
-        sigclip=[20,20], iterative=False, magsarefluxes=True)
+        sigclip=[7,7], iterative=False, magsarefluxes=True)
     )
 
     #
@@ -174,6 +251,9 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
             'flux':sflux,
             'rel_flux':srel_flux,
             'rel_flux_err':srel_flux_err,
+            'predetrending_time':stime,
+            'predetrending_rel_flux':srel_flux,
+            'predetrending_rel_flux_err':srel_flux_err,
             'x':np.array(xs).flatten(),
             'y':np.array(ys).flatten(),
             'median_imgs': median_imgs,
@@ -196,6 +276,61 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     )
 
     #
+    # Fit out a LINE in time from each time group, if the group has at least
+    # two days worth of data. I added this because an apparently relatively
+    # common long-term systematic in these LCs looks just like a linear slope
+    # over the course of an orbit. (Maybe b/c stars are moving, but aperture
+    # center is not? Unclear.)
+    #
+    predetrending_time = stime
+    predetrending_rel_flux = srel_flux
+    predetrending_rel_flux_err = srel_flux_err
+
+    ngroups, groups = find_lc_timegroups(stime, mingap=0.5)
+
+    _time, _rflux, _rflux_err = [], [], []
+
+    for group in groups:
+
+        tg_time = stime[group]
+        tg_rel_flux = srel_flux[group]
+        tg_rel_flux_err = srel_flux_err[group]
+
+        if tg_time.max() - tg_time.min() < 2:
+
+            # don't try fitting out trends in small time groups (risks
+            # overfitting).
+
+            _time.append(tg_time)
+            _rflux.append(tg_rel_flux)
+            _rflux_err.append(tg_rel_flux_err)
+
+            continue
+
+        try:
+
+            p = Legendre.fit(tg_time, tg_rel_flux, 1)
+            coeffs = p.coef
+
+            tg_fit_rel_flux = p(tg_time)
+
+            # divide out the linear fit
+            tg_dtr_rel_flux = tg_rel_flux/tg_fit_rel_flux
+
+            _time.append(tg_time)
+            _rflux.append(tg_dtr_rel_flux)
+            _rflux_err.append(tg_rel_flux_err)
+
+        except np.linalg.LinAlgError:
+            print('WRN! Legendre.fit failed, b/c bad data for this group. '
+                  'Continue.')
+            continue
+
+    stime = np.concatenate(_time).flatten()
+    srel_flux = np.concatenate(_rflux).flatten()
+    srel_flux_err = np.concatenate(_rflux_err).flatten()
+
+    #
     # 1-dimensional arrays:
     # time, quality, flux, rel_flux, and rel_flux_err are all of same length.
     #
@@ -214,6 +349,9 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
         'flux':sflux,
         'rel_flux':srel_flux,
         'rel_flux_err':srel_flux_err,
+        'predetrending_time':predetrending_time,
+        'predetrending_rel_flux':predetrending_rel_flux,
+        'predetrending_rel_flux_err':predetrending_rel_flux_err,
         'x':np.array(xs).flatten(),
         'y':np.array(ys).flatten(),
         'median_imgs': median_imgs,

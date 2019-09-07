@@ -42,7 +42,7 @@ def main():
     sel = (
         (source_df['Tmag_pred'] < 13)
         &
-        (source_df['age'] < 8.5)
+        (source_df['age'] < 9.0)
         &
         (source_df['age'] > 7.5)
     )
@@ -69,11 +69,19 @@ def main():
         name = str(r['name'])
         group_id = str(r['group_id'])
 
-        #FIXME
+        ##########################################
+        # NOTE: change often
         # require that we ony look at close, middle-aged objects as flagged
         # from glue visualizations
-        if int(group_id) not in close_middle_aged:
+
+        # if int(group_id) not in close_middle_aged:
+        #     continue
+
+        if int(group_id) != 113:
             continue
+        #if source_id != 5220404075366707584:
+        #    continue
+        ##########################################
 
         ## require that we only look at things Kounkel labelled as strings
         #if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
