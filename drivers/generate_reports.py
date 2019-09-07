@@ -74,22 +74,21 @@ def main():
         # require that we ony look at close, middle-aged objects as flagged
         # from glue visualizations
 
-        # if int(group_id) not in close_middle_aged:
-        #     continue
-
-        if int(group_id) != 113:
+        if int(group_id) not in close_middle_aged:
             continue
+
+        #if int(group_id) != 113:
+        #    continue
         #if source_id != 5220404075366707584:
         #    continue
-        ##########################################
-
-        ## require that we only look at things Kounkel labelled as strings
         #if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
+        #    # require that we only look at things Kounkel labelled as strings
         #    continue
         #if name != 'AB_Dor':
         #    continue
-        # if source_id != 5579169050153502976:
-        #     continue
+        #if source_id != 5579169050153502976:
+        #    continue
+        ##########################################
 
         c_obj = SkyCoord(ra, dec, unit=(u.deg, u.deg), frame='icrs')
 
@@ -137,6 +136,7 @@ def main():
             d = glgf.get_lc_given_fficutout(workingdir, cutouts, c_obj,
                                             return_pkl=False)
         else:
+            d = np.nan
             print('WRN! did not find fficutout for {}'.format(workingdir))
 
         if not isinstance(d, dict):
