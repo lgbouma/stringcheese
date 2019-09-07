@@ -103,19 +103,19 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
     ax.scatter(
         nparr(praesepe_df['Teff']), nparr(praesepe_df['Prot']),
-        color='C0', edgecolors='k',
-        alpha=1, linewidths=0.4, zorder=2, s=9, marker='o',
+        color='gray', edgecolors='k',
+        alpha=1, linewidths=0.4, zorder=2, s=6, marker='s',
         label='Praesepe 670 Myr'
     )
     ax.scatter(
         nparr(pleiades_df['teff']), nparr(pleiades_df['prot']),
-        color='C1', edgecolors='k',
-        alpha=1, linewidths=0.4, zorder=1, s=9, marker='o',
+        color='whitesmoke', edgecolors='gray',
+        alpha=1, linewidths=0.4, zorder=1, s=6, marker='X',
         label='Pleiades 120 Myr'
     )
     ax.scatter(
         nparr(group113_df['teff']).astype(float), nparr(group113_df['prot']).astype(float),
-        color='C2', edgecolors='k',
+        color='darkorange', edgecolors='k',
         alpha=1, linewidths=0.4, zorder=3, s=9, marker='o',
         label='Group {}'.format(groupid)
     )
@@ -143,6 +143,10 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
 if __name__ == "__main__":
 
+    plot_prot_vs_teff(groupid=676, groupname='nan')
+
+    plot_prot_vs_teff(groupid=424, groupname='nan')
+
     plot_prot_vs_teff(groupid=208, groupname='Columba')
 
-    # plot_prot_vs_teff(groupid=113, groupname='nan')
+    plot_prot_vs_teff(groupid=113, groupname='nan')
