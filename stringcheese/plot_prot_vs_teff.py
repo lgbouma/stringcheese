@@ -142,4 +142,7 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
 
 if __name__ == "__main__":
-    plot_prot_vs_teff()
+
+    plot_prot_vs_teff(groupid=208, groupname='Columba')
+
+    # plot_prot_vs_teff(groupid=113, groupname='nan')
