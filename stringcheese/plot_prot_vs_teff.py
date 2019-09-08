@@ -56,6 +56,9 @@ def get_my_data(groupid=113, groupname='nan'):
         '20190907_group{}_name{}_classification/'.format(groupid, groupname)
     )
 
+    all_paths = glob(os.path.join(classifixndir,'*.png'))
+    n_paths = len(all_paths)
+
     gd_paths = glob(os.path.join(classifixndir,'*good*.png'))
 
     gd_sourceids = [
@@ -90,13 +93,13 @@ def get_my_data(groupid=113, groupname='nan'):
         {'teff': teffs, 'prot': prots}
     )
 
-    return df
+    return df, n_paths
 
 
 def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
     praesepe_df, pleiades_df = get_reference_data()
-    group113_df = get_my_data(groupid=groupid, groupname=groupname)
+    group_df, n_paths = get_my_data(groupid=groupid, groupname=groupname)
     kc19_df = pd.read_csv('../data/string_table2.csv')
 
     row = kc19_df[kc19_df['group_id'] == groupid]
@@ -122,7 +125,7 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
         label='Pleiades 120 Myr'
     )
     ax.scatter(
-        nparr(group113_df['teff']).astype(float), nparr(group113_df['prot']).astype(float),
+        nparr(group_df['teff']).astype(float), nparr(group_df['prot']).astype(float),
         color='darkorange', edgecolors='k',
         alpha=1, linewidths=0.4, zorder=3, s=9, marker='o',
         label='Group {}'.format(groupid)
@@ -135,8 +138,10 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
     ax.set_xlabel('Effective temperature [K]')
     ax.set_ylabel('Rotation period [days]')
 
-    titlestr = 'Name: {}. KC19 isochrone age: {:d} Myr.'.format(
-        groupname, int(age_myr)
+    titlestr = (
+        'Name: {}. KC19 isochrone age: {:d} Myr.\n{}/{} ({:d}%) with Prot.'.
+        format(groupname, int(age_myr), len(group_df), n_paths,
+               int(100*len(group_df)/n_paths))
     )
     ax.set_title(titlestr, fontsize='x-small')
 
@@ -156,10 +161,9 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
 if __name__ == "__main__":
 
-    plot_prot_vs_teff(groupid=676, groupname='nan')
+    nangroupids = [676, 424, 113, 1089, 508, 509, 786]
 
-    plot_prot_vs_teff(groupid=424, groupname='nan')
+    for nangroupid in nangroupids:
+        plot_prot_vs_teff(groupid=nangroupid, groupname='nan')
 
     plot_prot_vs_teff(groupid=208, groupname='Columba')
-
-    plot_prot_vs_teff(groupid=113, groupname='nan')
