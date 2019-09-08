@@ -66,11 +66,16 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                 c='k', alpha=1.0, zorder=3, s=10, rasterized=True,
                 linewidths=0)
 
-    model_flux = lcd['predetrending_rel_flux']/lcd['rel_flux']
-    ngroups, groups = find_lc_timegroups(lcd['predetrending_time'], mingap=0.5)
-    for group in groups:
-        ax0.plot(lcd['predetrending_time'][group], model_flux[group], c='C0',
-                 alpha=1.0, zorder=2, rasterized=True, lw=2)
+    try:
+        model_flux = nparr(lcd['predetrending_rel_flux']/lcd['rel_flux'])
+    except ValueError:
+        model_flux = 0
+
+    if isinstance(model_flux, np.ndarray):
+        ngroups, groups = find_lc_timegroups(lcd['predetrending_time'], mingap=0.5)
+        for group in groups:
+            ax0.plot(lcd['predetrending_time'][group], model_flux[group], c='C0',
+                     alpha=1.0, zorder=2, rasterized=True, lw=2)
 
     # add the bar showing the derived period
     epoch = np.nanmin(lcd['predetrending_time']) + lcd['ls_period']
