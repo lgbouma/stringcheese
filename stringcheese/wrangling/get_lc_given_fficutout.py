@@ -298,6 +298,10 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
         tg_rel_flux = srel_flux[group]
         tg_rel_flux_err = srel_flux_err[group]
 
+        if len(tg_time) <= 1:
+            # singletons or zero-groups would cause problems
+            continue
+
         if tg_time.max() - tg_time.min() < 2:
 
             # don't try fitting out trends in small time groups (risks
@@ -327,6 +331,28 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
             print('WRN! Legendre.fit failed, b/c bad data for this group. '
                   'Continue.')
             continue
+
+    if len(_time) == 0:
+
+        out_dict = {
+            'time':stime,
+            'quality':squality,
+            'flux':sflux,
+            'rel_flux':srel_flux,
+            'rel_flux_err':srel_flux_err,
+            'predetrending_time':stime,
+            'predetrending_rel_flux':srel_flux,
+            'predetrending_rel_flux_err':srel_flux_err,
+            'x':np.array(xs).flatten(),
+            'y':np.array(ys).flatten(),
+            'median_imgs': median_imgs,
+            'cutout_wcss': cutout_wcss
+        }
+
+        with open(outpath, 'wb') as f:
+            pickle.dump(out_dict, f)
+
+        return None
 
     stime = np.concatenate(_time).flatten()
     srel_flux = np.concatenate(_rflux).flatten()
