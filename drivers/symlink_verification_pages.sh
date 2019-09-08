@@ -19,5 +19,7 @@ for g in $groupdirs; do
 
 done
 
-# print the output
+# print the output to stdout
+for i in group??_namenan; do echo $i: `ls $i/*png | wc -l` ; done
 for i in group???_namenan; do echo $i: `ls $i/*png | wc -l` ; done
+for i in group????_namenan; do echo $i: `ls $i/*png | wc -l` ; done
