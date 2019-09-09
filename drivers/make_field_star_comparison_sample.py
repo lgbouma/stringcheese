@@ -37,6 +37,7 @@ elif 'brik' in host:
 ###############
 
 def main():
+
     source_df = pd.read_csv('../data/kounkel_table1_sourceinfo.csv')
 
     sel = (
@@ -57,14 +58,17 @@ def main():
     sdf2 = df2[(df2['age']>7.5) & (df2['age']<8.5)]
     sdf2_str = sdf2[sdf2['string']=='y']
 
+    # require that we ony look at close, middle-aged objects as flagged
+    # from glue visualizations
     close_middle_aged = [
-        1005, 208, 506, 424, 676, 507, 594, 209, 425, 595, 677, 905, 45, 7, 63
+        1005, 208, 506, 424, 676, 507, 594, 209,
+        425, 595, 677, 905, 45, 7, 63
     ]
 
     # older (like age >~8.4), and a bit further... like max 
     subset4 = [
-        1345, 1273, 1274, 1346, 906, 784, 1089, 508, 678, 509, 1006, 907, 785,
-        786
+        1345, 1273, 1274, 1346, 906, 784, 1089,
+        508, 678, 509, 1006, 907, 785, 786
     ]
 
     # now given the gaia ids, get the rotation periods
@@ -77,11 +81,9 @@ def main():
 
         ##########################################
         # NOTE: change often
-        # require that we ony look at close, middle-aged objects as flagged
-        # from glue visualizations
 
-        if int(group_id) not in subset4:
-            continue
+        #if int(group_id) not in subset4:
+        #    continue
         #if int(group_id) not in close_middle_aged:
         #    continue
 
