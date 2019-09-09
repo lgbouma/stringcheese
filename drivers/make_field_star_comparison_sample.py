@@ -1,9 +1,11 @@
 """
-Measure rotation periods for bright, young stars in strings. In other words:
-T < 13 7.5 < log(age) < 8.5   (like 30-300 Myr. no younger, b/c reddening.)
+For a given Kounkel+Covey 2019 groupid, construct a sample of stars in a
+similar direct, at similar parallaxes from Gaia. Ensure none are in the KC19
+list. This is your reference star sample. Measure the rotation periods of these
+stars.
 
 usage:
-    python -u generate_reports.py &> logs/make_ABDor_pages.log &
+    python -u make_field_star_comparison_sample.py &> logs/comparison.log &
 """
 
 ###########
@@ -17,6 +19,7 @@ from numpy import array as nparr
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.stats import LombScargle
+from astropy.io.votable import from_table, writeto, parse
 
 from astroquery.gaia import Gaia
 from astroquery.mast import Catalogs
@@ -28,54 +31,139 @@ from stringcheese import pipeline_utils as pu
 
 host = socket.gethostname()
 if 'phtess2' in host:
-    basedir = '/home/lbouma/stringcheese_cutouts/'
+    basedir = '/home/lbouma/stringcheese'
+    homedir = '/home/lbouma/'
 elif 'brik' in host:
-    basedir = '/home/luke/stringcheese_cutouts/'
+    basedir = '/home/luke/local/stringcheese'
+    homedir = '/home/luke/'
 
 ###############
 # main driver #
 ###############
 
-def main():
+def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
 
+    #
+    # get info needed to query gaia for comparison stars
+    #
     source_df = pd.read_csv('../data/kounkel_table1_sourceinfo.csv')
-
-    sel = (
-        (source_df['Tmag_pred'] < 14)
-        &
-        (source_df['age'] < 9.2)
-        &
-        (source_df['age'] > 7.5)
-    )
-
-    sdf = source_df[sel]
-    print(
-        'after making cuts on T<13, log(age) from 7.5-8.5, got {} stars, {} groups'.
-        format(len(sdf), len(np.unique(sdf['group_id'])))
-    )
+    sdf = source_df[(source_df['Tmag_pred'] < Tmag_cutoff) &
+                    (source_df['group_id']==kc19_groupid)]
+    n_sel_sources_in_group = len(sdf)
 
     df2 = pd.read_csv('../data/string_table2.csv')
-    sdf2 = df2[(df2['age']>7.5) & (df2['age']<8.5)]
-    sdf2_str = sdf2[sdf2['string']=='y']
 
-    # require that we ony look at close, middle-aged objects as flagged
-    # from glue visualizations
-    close_middle_aged = [
-        1005, 208, 506, 424, 676, 507, 594, 209,
-        425, 595, 677, 905, 45, 7, 63
-    ]
+    gdf = df2[df2['group_id']==kc19_groupid]
 
-    # older (like age >~8.4), and a bit further... like max 
-    subset4 = [
-        1345, 1273, 1274, 1346, 906, 784, 1089,
-        508, 678, 509, 1006, 907, 785, 786
-    ]
+    group_coord = SkyCoord(float(gdf['l'])*u.deg,
+                           float(gdf['b'])*u.deg, frame='galactic')
+    ra = group_coord.icrs.ra
+    dec = group_coord.icrs.dec
+    plx_mas = float(gdf['parallax'])
 
+    #
+    # define relevant directories / paths
+    #
+    gaiadir = os.path.join(basedir, 'gaia_queries')
+    if not os.path.exists(gaiadir):
+        os.mkdir(gaiadir)
+
+    outfile = os.path.join(
+        gaiadir,
+        'group{}_comparison_sample.xml.gz'.format(kc19_groupid)
+    )
+
+    #
+    # run the gaia query. require the same cuts imposed by Kounkel & Covey 2019
+    # on stellar quality. also require close on-sky (within 5 degrees of KC19
+    # group position), and close in parallax space (within +/-20% of KC19
+    # parallax).
+    #
+    if clean_gaia_cache and os.path.exists(outfile):
+        os.remove(outfile)
+
+    if not os.path.exists(outfile):
+
+        Gaia.login(credentials_file=os.path.join(homedir, '.gaia_credentials'))
+
+        jobstr = (
+        '''
+        SELECT TOP 2000 *
+        FROM gaiadr2.gaia_source
+        WHERE 1=CONTAINS(
+          POINT('ICRS', ra, dec),
+            CIRCLE('ICRS', {ra:.8f}, {dec:.8f}, {sep_deg:.1f}))
+        AND parallax < {plx_upper:.2f} AND parallax > {plx_lower:.2f}
+        AND parallax > 1
+        AND parallax_error < 0.1
+        AND 1.0857/phot_g_mean_flux_over_error < 0.03
+        AND astrometric_sigma5d_max < 0.3
+        AND visibility_periods_used > 8
+        AND (
+                (astrometric_excess_noise < 1)
+                OR
+                (astrometric_excess_noise > 1 AND astrometric_excess_noise_sig < 2)
+        )
+        '''
+        )
+
+        query = jobstr.format(sep_deg=5.0, ra=ra.value, dec=dec.value,
+                              plx_upper=1.2*plx_mas, plx_lower=0.8*plx_mas)
+
+
+        if not os.path.exists(outfile):
+            print(42*'-')
+            print('launching\n{}'.format(query))
+            print(42*'-')
+            j = Gaia.launch_job(query=query,
+                                verbose=True,
+                                dump_to_file=True, output_file=outfile)
+
+        Gaia.logout()
+
+    vot = parse(outfile)
+    tab = vot.get_first_table().to_table()
+    field_df = tab.to_pandas()
+
+    #
+    # require the same Tmag cutoff for the nbhd stars. then randomly sample the
+    # collection of stars.
+    #
+
+    Tmag_pred = (
+        field_df['phot_g_mean_mag']
+            - 0.00522555 * (field_df['phot_bp_mean_mag'] - field_df['phot_rp_mean_mag'])**3
+            + 0.0891337 * (field_df['phot_bp_mean_mag'] - field_df['phot_rp_mean_mag'])**2
+            - 0.633923 * (field_df['phot_bp_mean_mag'] - field_df['phot_rp_mean_mag'])
+            + 0.0324473
+    )
+
+    field_df['Tmag_pred'] = Tmag_pred
+
+    sfield_df = field_df[field_df['Tmag_pred'] < Tmag_cutoff]
+
+    n_field = len(sfield_df)
+
+    if n_sel_sources_in_group < n_field:
+        errmsg = (
+            'ngroup: {}. nfield: {}. plz tune gaia query to get more stars'.
+            format(n_sel_sources_in_group, n_field)
+        )
+        raise AssertionError(errmsg)
+
+    srfield_df = sfield_df.sample(n=n_sel_sources_in_group)
+
+    #
     # now given the gaia ids, get the rotation periods
-    for ix, r in sdf.iterrows():
+    #
+    for ix, r in srfield_df.iterrows():
 
         source_id = np.int64(r['source_id'])
-        ra, dec = float(r['ra_x']), float(r['dec_x'])
+        ra, dec = float(r['ra']), float(r['dec'])
+
+        #FIXME FIXME: 
+        #FIXME FIXME: all the paths below need to be redefined
+        #FIXME FIXME: 
         name = str(r['name'])
         group_id = str(r['group_id'])
 
