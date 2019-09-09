@@ -3,7 +3,7 @@ Measure rotation periods for bright, young stars in strings. In other words:
 T < 13 7.5 < log(age) < 8.5   (like 30-300 Myr. no younger, b/c reddening.)
 
 usage:
-    python -u generate_reports.py &> logs/make_ABDor_pages.log &
+    python -u make_reports.py &> logs/logname.log &
 """
 
 ###########
@@ -50,12 +50,12 @@ def main():
 
     sdf = source_df[sel]
     print(
-        'after making cuts on T<13, log(age) from 7.5-8.5, got {} stars, {} groups'.
+        'after making cuts on T<14, log(age) from 7.5-9.2, got {} stars, {} groups'.
         format(len(sdf), len(np.unique(sdf['group_id'])))
     )
 
     df2 = pd.read_csv('../data/string_table2.csv')
-    sdf2 = df2[(df2['age']>7.5) & (df2['age']<8.5)]
+    sdf2 = df2[(df2['age']>7.5) & (df2['age']<9.2)]
     sdf2_str = sdf2[sdf2['string']=='y']
 
     # require that we ony look at close, middle-aged objects as flagged
