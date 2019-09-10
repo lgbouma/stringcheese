@@ -28,9 +28,9 @@ from stringcheese import pipeline_utils as pu
 
 host = socket.gethostname()
 if 'phtess2' in host:
-    basedir = '/home/lbouma/stringcheese_cutouts/'
+    basedir = '/home/lbouma/local/stringcheese/'
 elif 'brik' in host:
-    basedir = '/home/luke/stringcheese_cutouts/'
+    basedir = '/home/luke/local/stringcheese/'
 
 ###############
 # main driver #
@@ -87,8 +87,8 @@ def main():
         #if int(group_id) not in close_middle_aged:
         #    continue
 
-        #if int(group_id) != 113:
-        #    continue
+        if int(group_id) != 113:
+            continue
         #if source_id != 5220404075366707584:
         #    continue
         #if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
