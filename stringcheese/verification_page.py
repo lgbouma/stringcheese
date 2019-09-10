@@ -44,7 +44,7 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
 
     plt.close('all')
 
-    fig = plt.figure(figsize=(12,9))
+    fig = plt.figure(figsize=(12,12))
 
     #ax0 = plt.subplot2grid((3, 3), (0, 0), colspan=3)
     #ax1 = plt.subplot2grid((3, 3), (1, 0), colspan=3)
@@ -84,6 +84,11 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     ax0.plot([epoch, epoch+lcd['ls_period']], [yval, yval], color='red', lw=2,
              zorder=4)
 
+    ymax = np.percentile(lcd['predetrending_rel_flux'], 95)
+    ymin = np.percentile(lcd['predetrending_rel_flux'], 5)
+    ydiff = 1.15*(ymax-ymin)
+    ax0.set_ylim((ymin-ydiff,ymax+ydiff))
+
     #ax0.set_xlabel('Time [BJD$_{\mathrm{TDB}}$]')
     ax0.set_xticklabels('')
     ax0.set_ylabel('Raw flux')
@@ -116,6 +121,11 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     yval = np.max(lcd['rel_flux']) + 0.5*np.std(lcd['rel_flux'])
     ax1.plot([epoch, epoch+lcd['ls_period']], [yval, yval], color='red', lw=2)
 
+    ymax = np.percentile(lcd['rel_flux'], 95)
+    ymin = np.percentile(lcd['rel_flux'], 5)
+    ydiff = 1.15*(ymax-ymin)
+    ax1.set_ylim((ymin-ydiff,ymax+ydiff))
+
     ax1.set_xlabel('Time [BJD$_{\mathrm{TDB}}$]')
     ax1.set_ylabel('Detrended flux')
 
@@ -138,8 +148,17 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                            lcd['time'][np.argmin(lcd['rel_flux'])], wrap=False,
                            sort=True)
 
-    ax3.scatter(phzd['phase'], phzd['mags'], c='k', rasterized=True, s=10,
+    ax3.scatter(phzd['phase'], phzd['mags'], c='k', rasterized=True, s=7,
                 linewidths=0)
+
+    xlim = ax3.get_xlim()
+    ax3.hlines(1.0, xlim[0], xlim[1], colors='gray', linestyles='dotted')
+    ax3.set_xlim(xlim)
+
+    ymax = np.percentile(lcd['rel_flux'], 95)
+    ymin = np.percentile(lcd['rel_flux'], 5)
+    ydiff = 1.15*(ymax-ymin)
+    ax3.set_ylim((ymin-ydiff,ymax+ydiff))
 
     ax3.set_xlabel('Phase', labelpad=-1)
     ax3.set_ylabel('Flux', labelpad=-0.5)
