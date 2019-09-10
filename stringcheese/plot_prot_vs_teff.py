@@ -43,17 +43,23 @@ def get_reference_data():
     return praesepe_df, pleiades_df
 
 
-def get_my_data(groupid=113, groupname='nan'):
+def get_my_data(groupid=113, groupname='nan', classifxndate=20190907,
+                is_field_star_comparison=False):
     #
     # for anything flagged manually as good (in other words, the rotation
     # period found just from the LS peak was OK), get the rotation period and
     # teff from the .results file.
     #
 
-    # NOTE: might need to fix this date-based naming convention...
+    if is_field_star_comparison:
+        fs_str = 'field_star_comparison_'
+    else:
+        fs_str = ''
+
     classifixndir = (
         '../results/manual_classification/'
-        '20190907_group{}_name{}_classification/'.format(groupid, groupname)
+        '{}_{}group{}_name{}_classification/'.
+        format(classifxndate, fs_str, groupid, groupname)
     )
 
     all_paths = glob(os.path.join(classifixndir,'*.png'))
@@ -71,8 +77,8 @@ def get_my_data(groupid=113, groupname='nan'):
 
     # now get the LS results
     datadir = (
-        '../results/pkls_statuses_pages/group{}_name{}'.
-        format(groupid, groupname)
+        '../results/pkls_statuses_pages/{}group{}_name{}'.
+        format(fs_str, groupid, groupname)
     )
 
     prots, teffs = [], []
@@ -96,10 +102,16 @@ def get_my_data(groupid=113, groupname='nan'):
     return df, n_paths
 
 
-def plot_prot_vs_teff(groupid=113, groupname='nan'):
+def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
+                      is_field_star_comparison=False):
 
     praesepe_df, pleiades_df = get_reference_data()
-    group_df, n_paths = get_my_data(groupid=groupid, groupname=groupname)
+    group_df, n_paths = get_my_data(
+        groupid=groupid,
+        groupname=groupname,
+        classifxndate=classifxndate,
+        is_field_star_comparison=is_field_star_comparison
+    )
     kc19_df = pd.read_csv('../data/string_table2.csv')
 
     row = kc19_df[kc19_df['group_id'] == groupid]
@@ -124,11 +136,15 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
         alpha=1, linewidths=0.4, zorder=1, s=6, marker='X',
         label='Pleiades 120 Myr'
     )
+    if is_field_star_comparison:
+        label = 'Group {} field neighbors'.format(groupid)
+    else:
+        label = 'Group {}'.format(groupid)
     ax.scatter(
         nparr(group_df['teff']).astype(float), nparr(group_df['prot']).astype(float),
         color='darkorange', edgecolors='k',
         alpha=1, linewidths=0.4, zorder=3, s=9, marker='o',
-        label='Group {}'.format(groupid)
+        label=label
     )
     ax.legend(loc='best', fontsize='x-small')
 
@@ -150,9 +166,14 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
     ax.get_xaxis().set_tick_params(which='both', direction='in',
                                    labelsize='small', top=True, right=True)
 
+    if is_field_star_comparison:
+        fs_str = 'field_star_comparison_'
+    else:
+        fs_str = ''
+
     outpath = (
-        '../results/prot_vs_teff_group{}_name{}.png'.
-        format(groupid, groupname)
+        '../results/prot_vs_teff_{}group{}_name{}.png'.
+        format(fs_str, groupid, groupname)
     )
     f.savefig(outpath, dpi=300, bbox_inches='tight')
     print('made {}'.format(outpath))
@@ -161,9 +182,15 @@ def plot_prot_vs_teff(groupid=113, groupname='nan'):
 
 if __name__ == "__main__":
 
-    nangroupids = [676, 424, 113, 1089, 508, 509, 786]
+    plot_prot_vs_teff(groupid=113, groupname='nan',
+                      classifxndate=20190910)
 
-    for nangroupid in nangroupids:
-        plot_prot_vs_teff(groupid=nangroupid, groupname='nan')
+    plot_prot_vs_teff(groupid=113, groupname='nan',
+                      classifxndate=20190910, is_field_star_comparison=True)
 
-    plot_prot_vs_teff(groupid=208, groupname='Columba')
+    # nangroupids = [676, 424, 113, 1089, 508, 509, 786]
+
+    # for nangroupid in nangroupids:
+    #     plot_prot_vs_teff(groupid=nangroupid, groupname='nan')
+
+    # plot_prot_vs_teff(groupid=208, groupname='Columba')
