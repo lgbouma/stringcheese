@@ -11,10 +11,12 @@ from astroquery.mast import Catalogs
 
 import astropy.visualization as vis
 
-from astrobase.lcmath import phase_magseries, find_lc_timegroups
+from astrobase.lcmath import (
+    phase_magseries, find_lc_timegroups, phase_bin_magseries
+)
 
 def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
-                               outvppath, outd):
+                               outvppath, outd, show_binned=True):
     """
     Make the verification page, which consists of:
 
@@ -149,10 +151,20 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                            sort=True)
 
     ax3.scatter(phzd['phase'], phzd['mags'], c='k', rasterized=True, s=7,
-                linewidths=0)
+                linewidths=0, zorder=1)
+
+    if show_binned:
+        binphasedlc = phase_bin_magseries(phzd['phase'], phzd['mags'],
+                                          binsize=1e-2, minbinelems=5)
+        binplotphase = binphasedlc['binnedphases']
+        binplotmags = binphasedlc['binnedmags']
+
+        ax3.plot(binplotphase, binplotmags, marker='o', ms=7, ls='None',mew=0,
+                 color='darkorange', rasterized=True)
 
     xlim = ax3.get_xlim()
-    ax3.hlines(1.0, xlim[0], xlim[1], colors='gray', linestyles='dotted')
+    ax3.hlines(1.0, xlim[0], xlim[1], colors='gray', linestyles='dotted',
+               zorder=2)
     ax3.set_xlim(xlim)
 
     ymax = np.percentile(lcd['rel_flux'], 95)
