@@ -41,7 +41,7 @@ elif 'brik' in host:
 # main driver #
 ###############
 
-def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
+def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=True):
 
     #
     # get info needed to query gaia for comparison stars
@@ -108,7 +108,7 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
         )
 
         query = jobstr.format(sep_deg=5.0, ra=ra.value, dec=dec.value,
-                              plx_upper=1.2*plx_mas, plx_lower=0.8*plx_mas)
+                              plx_upper=1.3*plx_mas, plx_lower=0.7*plx_mas)
 
 
         if not os.path.exists(outfile):
@@ -126,7 +126,8 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
     field_df = tab.to_pandas()
 
     #
-    # require the same Tmag cutoff for the nbhd stars. then randomly sample the
+    # require the same Tmag cutoff for the nbhd stars. ensure no overlap w/
+    # sample of stars from the group itself. then randomly sample the
     # collection of stars.
     #
 
@@ -141,12 +142,14 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
     field_df['Tmag_pred'] = Tmag_pred
 
     sfield_df = field_df[field_df['Tmag_pred'] < Tmag_cutoff]
+    common = sfield_df.merge(sdf, on='source_id', how='inner')
+    sfield_df = sfield_df[~sfield_df.source_id.isin(common.source_id)]
 
     n_field = len(sfield_df)
 
-    if n_sel_sources_in_group < n_field:
+    if 2*n_sel_sources_in_group > n_field:
         errmsg = (
-            'ngroup: {}. nfield: {}. plz tune gaia query to get more stars'.
+            'ngroup: {}. nfield: {}. plz tune gaia query to get >2x the stars'.
             format(n_sel_sources_in_group, n_field)
         )
         raise AssertionError(errmsg)
@@ -160,33 +163,8 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
 
         source_id = np.int64(r['source_id'])
         ra, dec = float(r['ra']), float(r['dec'])
-
-        #FIXME FIXME: 
-        #FIXME FIXME: all the paths below need to be redefined
-        #FIXME FIXME: 
-        name = str(r['name'])
-        group_id = str(r['group_id'])
-
-        ##########################################
-        # NOTE: change often
-
-        #if int(group_id) not in subset4:
-        #    continue
-        #if int(group_id) not in close_middle_aged:
-        #    continue
-
-        #if int(group_id) != 113:
-        #    continue
-        #if source_id != 5220404075366707584:
-        #    continue
-        #if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
-        #    # require that we only look at things Kounkel labelled as strings
-        #    continue
-        #if name != 'AB_Dor':
-        #    continue
-        #if source_id != 5579169050153502976:
-        #    continue
-        ##########################################
+        group_id = kc19_groupid
+        name = str(gdf['name'].iloc[0])
 
         c_obj = SkyCoord(ra, dec, unit=(u.deg, u.deg), frame='icrs')
 
@@ -199,8 +177,10 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
                   format(group_id, name))
             continue
 
-        workingdir = os.path.join(basedir,
-                                  'group{}_name{}'.format(group_id, name))
+        workingdir = os.path.join(
+            basedir,
+            'field_star_comparison_group{}_name{}'.format(group_id, name)
+        )
         if not os.path.exists(workingdir):
             os.mkdir(workingdir)
         workingdir = os.path.join(workingdir, str(source_id))
@@ -314,10 +294,6 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
 
         vp.generate_verification_page(d, ls, freq, power, cutouts, c_obj,
                                       outvppath, outd)
-
-        #TODO: maybe only make plot if significant FAP?
-        #TODO: and only if teff is within some range...
-
 
         #FIXME: need to verify your photometry implementation got the 0.5 pixel
         #convention right (it probably did not!)
