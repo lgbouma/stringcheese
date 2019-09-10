@@ -41,7 +41,7 @@ elif 'brik' in host:
 # main driver #
 ###############
 
-def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=True):
+def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
 
     #
     # get info needed to query gaia for comparison stars
@@ -88,7 +88,7 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=True):
 
         jobstr = (
         '''
-        SELECT TOP 2000 *
+        SELECT *
         FROM gaiadr2.gaia_source
         WHERE 1=CONTAINS(
           POINT('ICRS', ra, dec),
