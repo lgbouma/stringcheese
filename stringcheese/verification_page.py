@@ -80,15 +80,14 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                      alpha=1.0, zorder=2, rasterized=True, lw=2)
 
     # add the bar showing the derived period
-    epoch = np.nanmin(lcd['predetrending_time']) + lcd['ls_period']
-    yval = (np.max(lcd['predetrending_rel_flux']) +
-            0.5*np.std(lcd['predetrending_rel_flux']))
-    ax0.plot([epoch, epoch+lcd['ls_period']], [yval, yval], color='red', lw=2,
-             zorder=4)
-
     ymax = np.percentile(lcd['predetrending_rel_flux'], 95)
     ymin = np.percentile(lcd['predetrending_rel_flux'], 5)
     ydiff = 1.15*(ymax-ymin)
+
+    epoch = np.nanmin(lcd['predetrending_time']) + lcd['ls_period']
+    ax0.plot([epoch, epoch+lcd['ls_period']], [ymax, ymax], color='red', lw=2,
+             zorder=4)
+
     ax0.set_ylim((ymin-ydiff,ymax+ydiff))
 
     #ax0.set_xlabel('Time [BJD$_{\mathrm{TDB}}$]')
@@ -119,13 +118,13 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                 rasterized=True, linewidths=0)
 
     # add the bar showing the derived period
-    epoch = np.nanmin(lcd['time']) + lcd['ls_period']
-    yval = np.max(lcd['rel_flux']) + 0.5*np.std(lcd['rel_flux'])
-    ax1.plot([epoch, epoch+lcd['ls_period']], [yval, yval], color='red', lw=2)
-
     ymax = np.percentile(lcd['rel_flux'], 95)
     ymin = np.percentile(lcd['rel_flux'], 5)
     ydiff = 1.15*(ymax-ymin)
+
+    epoch = np.nanmin(lcd['time']) + lcd['ls_period']
+    ax1.plot([epoch, epoch+lcd['ls_period']], [ymax, ymax], color='red', lw=2)
+
     ax1.set_ylim((ymin-ydiff,ymax+ydiff))
 
     ax1.set_xlabel('Time [BJD$_{\mathrm{TDB}}$]')
@@ -150,7 +149,7 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                            lcd['time'][np.argmin(lcd['rel_flux'])], wrap=False,
                            sort=True)
 
-    ax3.scatter(phzd['phase'], phzd['mags'], c='k', rasterized=True, s=7,
+    ax3.scatter(phzd['phase'], phzd['mags'], c='k', rasterized=True, s=10,
                 linewidths=0, zorder=1)
 
     if show_binned:
@@ -159,8 +158,8 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
         binplotphase = binphasedlc['binnedphases']
         binplotmags = binphasedlc['binnedmags']
 
-        ax3.plot(binplotphase, binplotmags, marker='o', ms=7, ls='None',mew=0,
-                 color='darkorange', rasterized=True)
+        ax3.scatter(binplotphase, binplotmags, s=10, c='darkorange',
+                    linewidths=0, zorder=3, rasterized=True)
 
     xlim = ax3.get_xlim()
     ax3.hlines(1.0, xlim[0], xlim[1], colors='gray', linestyles='dotted',
