@@ -190,13 +190,13 @@ def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
                                    labelsize='small', top=True, right=True)
 
     if is_field_star_comparison:
-        fs_str = 'field_star_comparison_'
+        fs_str = '_field_star_comparison'
     else:
         fs_str = ''
 
     outpath = (
-        '../results/prot_vs_teff_{}group{}_name{}.png'.
-        format(fs_str, groupid, groupname)
+        '../results/prot_vs_teff_group{}_name{}{}.png'.
+        format(groupid, groupname, fs_str)
     )
     if remove_outliers:
         outpath = (
@@ -205,6 +205,14 @@ def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
         )
     f.savefig(outpath, dpi=300, bbox_inches='tight')
     print('made {}'.format(outpath))
+
+    if groupid==113 and not is_field_star_comparison:
+        sel = (
+            (group_df['teff'].astype(float)>4000) &
+            (group_df['prot'].astype(float)>8)
+        )
+        print('group 113 prot vs teff outliers are...')
+        print(group_df[sel].source_id)
 
 
 
