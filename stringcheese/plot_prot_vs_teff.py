@@ -96,14 +96,14 @@ def get_my_data(groupid=113, groupname='nan', classifxndate=20190907,
         prots.append(d['lomb-scargle']['ls_period'])
 
     df = pd.DataFrame(
-        {'teff': teffs, 'prot': prots}
+        {'teff': teffs, 'prot': prots, 'source_id':gd_sourceids}
     )
 
     return df, n_paths
 
 
 def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
-                      is_field_star_comparison=False):
+                      is_field_star_comparison=False, remove_outliers=False):
 
     praesepe_df, pleiades_df = get_reference_data()
     group_df, n_paths = get_my_data(
@@ -113,6 +113,29 @@ def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
         is_field_star_comparison=is_field_star_comparison
     )
     kc19_df = pd.read_csv('../data/string_table2.csv')
+
+    if remove_outliers:
+        # remove outliers manually selected from glue (RVs or HR diagram
+        # offset)
+        _hr = pd.read_csv(
+            '../data/kc19_group{}_table1_hr_diagram_weirdos.csv'.
+            format(groupid)
+        )
+        _rv = pd.read_csv(
+            '../data/kc19_group{}_table1_rv_weirdos.csv'.
+            format(groupid)
+        )
+        outlier_df = pd.concat((_hr, _rv))
+
+        common = group_df.merge(outlier_df, on='source_id', how='inner')
+
+        print('before pruning RV and HR diagram outliers, had {} Prots'.
+              format(len(group_df)))
+
+        group_df = group_df[~group_df.source_id.isin(common.source_id)]
+
+        print('after pruning RV and HR diagram outliers, had {} Prots'.
+              format(len(group_df)))
 
     row = kc19_df[kc19_df['group_id'] == groupid]
     age = 10**(float(row['age']))
@@ -175,6 +198,11 @@ def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
         '../results/prot_vs_teff_{}group{}_name{}.png'.
         format(fs_str, groupid, groupname)
     )
+    if remove_outliers:
+        outpath = (
+            '../results/prot_vs_teff_{}group{}_name{}_outliers_removed.png'.
+            format(fs_str, groupid, groupname)
+        )
     f.savefig(outpath, dpi=300, bbox_inches='tight')
     print('made {}'.format(outpath))
 
@@ -184,6 +212,10 @@ if __name__ == "__main__":
 
     plot_prot_vs_teff(groupid=113, groupname='nan',
                       classifxndate=20190910)
+
+    plot_prot_vs_teff(groupid=113, groupname='nan',
+                      classifxndate=20190910, remove_outliers=True)
+
 
     plot_prot_vs_teff(groupid=113, groupname='nan',
                       classifxndate=20190910, is_field_star_comparison=True)
