@@ -7,7 +7,7 @@ parse the Kounkel & Covey (2019) catalogs to get metadata needed to make
 import numpy as np, pandas as pd
 from astropy.io.votable import from_table, writeto, parse
 
-getfile = '../data/gaia_archive_string_table1.vot.gz'
+getfile = '../data/gaia_archive_kc19_string_table1-result.vot.gz'
 vot = parse(getfile)
 tab = vot.get_first_table().to_table()
 # NOTE: "to pandas" with gaia source IDs is a BAD BAD idea, because it
@@ -54,6 +54,19 @@ mdf['Tmag_pred'] = Tmag_pred
 # merge on group_id to get ages, and whether it is in a "string" or not
 #
 amdf = mdf.merge(df2, on='group_id', how='left')
+
+#
+# get "absolute G" analog (ignoring extinction). note that it's a bit noisy,
+# but it's better than ignoring the parallax entirely. note also that i'm
+# ignoring the extinction correction, b/c it's basically not known. (though
+# Green+19 might differ).
+#
+amdf['M_G'] = (
+    amdf['phot_g_mean_mag'] +
+    + 5*np.log10(amdf['parallax']/1e3)
+)
+
+
 print('\n{} entries after merging outside to get ages...'.format(len(amdf)))
 
 outpath = '../data/kounkel_table1_sourceinfo.csv'
