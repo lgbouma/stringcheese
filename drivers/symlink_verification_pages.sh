@@ -3,7 +3,7 @@
 # group-specific subdirectory.  errors in the symlinking (e.g., if the symlink
 # already exists) are sent to /dev/null.
 #
-groupdirs=`ls -d /home/luke/local/stringcheese/*group*`
+groupdirs=`ls -d /home/luke/local/stringcheese/fits_pkls_results_pngs/*group*`
 
 for g in $groupdirs; do
 
@@ -20,6 +20,7 @@ for g in $groupdirs; do
 done
 
 # print the output to stdout
-for i in *group??_namenan; do echo $i: `ls $i/*png | wc -l` ; done
-for i in *group???_namenan; do echo $i: `ls $i/*png | wc -l` ; done
-for i in *group????_namenan; do echo $i: `ls $i/*png | wc -l` ; done
+for i in *group?_name*; do echo $i: `ls $i/*png | wc -l` ; done
+for i in *group??_name*; do echo $i: `ls $i/*png | wc -l` ; done
+for i in *group???_name*; do echo $i: `ls $i/*png | wc -l` ; done
+for i in *group????_name*; do echo $i: `ls $i/*png | wc -l` ; done

@@ -120,6 +120,7 @@ def main():
             continue
 
         workingdir = os.path.join(basedir,
+                                  'fits_pkls_results_pngs',
                                   'group{}_name{}'.format(group_id, name))
         if not os.path.exists(workingdir):
             os.mkdir(workingdir)

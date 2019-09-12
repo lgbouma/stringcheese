@@ -179,6 +179,7 @@ def main(kc19_groupid=113, Tmag_cutoff=14, clean_gaia_cache=False):
 
         workingdir = os.path.join(
             basedir,
+            'fits_pkls_results_pngs',
             'field_star_comparison_group{}_name{}'.format(group_id, name)
         )
         if not os.path.exists(workingdir):
