@@ -9,7 +9,7 @@ usage:
 ###########
 # imports #
 ###########
-import os, socket
+import os, socket, requests
 from glob import glob
 import numpy as np, pandas as pd
 from numpy import array as nparr
@@ -145,7 +145,11 @@ def main():
                 len(cutouts), workingdir)
             )
         else:
-            gfc.get_fficutout(c_obj, cutoutdir=workingdir)
+            try:
+                gfc.get_fficutout(c_obj, cutoutdir=workingdir)
+            except requests.exceptions.HTTPError as e:
+                print('ERR! {}: {} failed to get FFI cutout'.
+                      format(repr(e), workingdir))
 
         #
         # given the FFI cutouts, make simple light curves.
@@ -158,7 +162,7 @@ def main():
             d = np.nan
             print('WRN! did not find fficutout for {}'.format(workingdir))
 
-        if not isinstance(d, dict):
+        if not isinstance(d, dict) or len(d['time'])==0:
             print('WRN! got bad light curve for {}. skipping.'.
                   format(workingdir))
             continue
