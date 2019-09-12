@@ -26,6 +26,8 @@ from stringcheese.wrangling import get_lc_given_fficutout as glgf
 from stringcheese import verification_page as vp
 from stringcheese import pipeline_utils as pu
 
+from scipy.stats import iqr
+
 host = socket.gethostname()
 if 'phtess2' in host:
     basedir = '/home/lbouma/local/stringcheese/'
@@ -43,10 +45,16 @@ def main():
     sel = (
         (source_df['Tmag_pred'] < 14)
         &
-        (source_df['age'] < 9.2)
-        &
-        (source_df['age'] > 7.5)
+        (source_df['parallax'] > 5)
     )
+
+    # sel = (
+    #     (source_df['Tmag_pred'] < 14)
+    #     &
+    #     (source_df['age'] < 9.2)
+    #     &
+    #     (source_df['age'] > 7.5)
+    # )
 
     sdf = source_df[sel]
     print(
@@ -55,8 +63,9 @@ def main():
     )
 
     df2 = pd.read_csv('../data/string_table2.csv')
-    sdf2 = df2[(df2['age']>7.5) & (df2['age']<9.2)]
-    sdf2_str = sdf2[sdf2['string']=='y']
+    sdf2 = df2[df2['parallax'] > 5]
+    # sdf2 = df2[(df2['age']>7.5) & (df2['age']<9.2)]
+    # sdf2_str = sdf2[sdf2['string']=='y']
 
     # require that we ony look at close, middle-aged objects as flagged
     # from glue visualizations
@@ -86,9 +95,8 @@ def main():
         #    continue
         #if int(group_id) not in close_middle_aged:
         #    continue
-
-        if int(group_id) != 113:
-            continue
+        #if int(group_id) != 113:
+        #    continue
         #if source_id != 5220404075366707584:
         #    continue
         #if int(group_id) not in np.array(sdf2_str['group_id']).astype(int):
@@ -144,7 +152,7 @@ def main():
         cutouts = glob(os.path.join(workingdir,'*.fits'))
         if len(cutouts)>=1:
             d = glgf.get_lc_given_fficutout(workingdir, cutouts, c_obj,
-                                            return_pkl=False)
+                                            return_pkl=True)
         else:
             d = np.nan
             print('WRN! did not find fficutout for {}'.format(workingdir))
@@ -178,6 +186,16 @@ def main():
 
         d['ls_fap'] = ls_fap
         d['ls_period'] = ls_period
+
+        #
+        # collect standard variability info
+        #
+        rel_flux_rms = np.std(d['rel_flux'])
+        rel_flux_iqr = iqr(d['rel_flux'], rng=(25,75))
+        rel_flux_15_to_85 = iqr(d['rel_flux'], rng=(15,85))
+        rel_flux_5_to_95 = iqr(d['rel_flux'], rng=(5,95))
+        rel_flux_median = np.median(d['rel_flux'])
+        rel_flux_mad = np.median(np.abs(d['rel_flux'] - rel_flux_median))
 
         #
         # try to get TIC Teff. search TIC within 5 arcseconds, then take the
@@ -220,16 +238,22 @@ def main():
             'dec': dec,
             'name': name,
             'group_id': group_id,
-            'teff':teff
+            'teff':teff,
+            'rel_flux_rms':rel_flux_rms,
+            'rel_flux_iqr':rel_flux_iqr,
+            'rel_flux_15_to_85':rel_flux_15_to_85,
+            'rel_flux_5_to_95':rel_flux_5_to_95,
+            'rel_flux_median':rel_flux_median,
+            'rel_flux_mad':rel_flux_mad
         }
-        pu.save_status(outpath, 'lomb-scargle', outd)
+        pu.save_status(outpath, 'variability_info', outd)
+        pu.save_status(outpath, 'starinfo', dict(r))
 
         vp.generate_verification_page(d, ls, freq, power, cutouts, c_obj,
                                       outvppath, outd)
 
         #TODO: maybe only make plot if significant FAP?
         #TODO: and only if teff is within some range...
-
 
         #FIXME: need to verify your photometry implementation got the 0.5 pixel
         #convention right (it probably did not!)
