@@ -129,9 +129,31 @@ def get_lc_given_fficutout(workingdir, cutouts, c_obj, return_pkl=False):
     # light curves by doing the sum!
     #
     positions = [(x, y) for x,y in zip(xs, ys)]
-    circ_apertures = [
-        CircularAperture(position, r=3) for position in positions
-    ]
+
+    try:
+        circ_apertures = [
+            CircularAperture(position, r=3) for position in positions
+        ]
+
+    except ValueError as e:
+
+        print('ERR1 {}'.format(e))
+
+        out_dict = {
+            'time':[],
+            'quality':[],
+            'flux':[],
+            'rel_flux':[],
+            'rel_flux_err':[],
+            'predetrending_time':[],
+            'predetrending_rel_flux':[],
+            'predetrending_rel_flux_err':[]
+        }
+
+        with open(outpath, 'wb') as f:
+            pickle.dump(out_dict, f)
+
+        return None
 
     fluxs = []
     median_imgs = []
