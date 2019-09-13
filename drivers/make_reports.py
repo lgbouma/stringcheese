@@ -134,6 +134,10 @@ def main():
         if os.path.exists(outvppath):
             print('found {}, continue'.format(outvppath))
             continue
+        if os.path.exists(os.path.join(workingdir, 'failed.bool')):
+            print('found {}, continue'.
+                  format(os.path.join(workingdir, 'failed.bool')))
+            continue
 
         #
         # if you already downloaded ffi cutouts for this object, dont get any
@@ -165,6 +169,7 @@ def main():
         if not isinstance(d, dict) or len(d['time'])==0:
             print('WRN! got bad light curve for {}. skipping.'.
                   format(workingdir))
+            os.mknod(os.path.join(workingdir, 'failed.bool'))
             continue
 
         outpath = os.path.join(workingdir, 'GLS_rotation_period.results')

@@ -153,13 +153,17 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
                 linewidths=0, zorder=1)
 
     if show_binned:
-        binphasedlc = phase_bin_magseries(phzd['phase'], phzd['mags'],
-                                          binsize=1e-2, minbinelems=5)
-        binplotphase = binphasedlc['binnedphases']
-        binplotmags = binphasedlc['binnedmags']
+        try:
+            binphasedlc = phase_bin_magseries(phzd['phase'], phzd['mags'],
+                                              binsize=1e-2, minbinelems=5)
+            binplotphase = binphasedlc['binnedphases']
+            binplotmags = binphasedlc['binnedmags']
 
-        ax3.scatter(binplotphase, binplotmags, s=10, c='darkorange',
-                    linewidths=0, zorder=3, rasterized=True)
+            ax3.scatter(binplotphase, binplotmags, s=10, c='darkorange',
+                        linewidths=0, zorder=3, rasterized=True)
+        except TypeError as e:
+            print(e)
+            pass
 
     xlim = ax3.get_xlim()
     ax3.hlines(1.0, xlim[0], xlim[1], colors='gray', linestyles='dotted',
