@@ -64,9 +64,14 @@ def generate_verification_page(lcd, ls, freq, power, cutoutpaths, c_obj,
     # row 0: entire light curve, pre-detrending (with horiz bar showing
     # rotation period). plot model LC too.
     #
-    ax0.scatter(lcd['predetrending_time'], lcd['predetrending_rel_flux'],
-                c='k', alpha=1.0, zorder=3, s=10, rasterized=True,
-                linewidths=0)
+    try:
+        ax0.scatter(lcd['predetrending_time'], lcd['predetrending_rel_flux'],
+                    c='k', alpha=1.0, zorder=3, s=10, rasterized=True,
+                    linewidths=0)
+    except KeyError as e:
+        print('ERR! {}\nReturning.'.format(e))
+        return
+
 
     try:
         model_flux = nparr(lcd['predetrending_rel_flux']/lcd['rel_flux'])
