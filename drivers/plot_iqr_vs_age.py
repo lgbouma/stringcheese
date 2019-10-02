@@ -10,10 +10,9 @@ from glob import glob
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 from numpy import array as nparr
 
+from scipy.stats import iqr
 
 from stringcheese import pipeline_utils as pu
-
-from scipy.stats import iqr
 
 host = socket.gethostname()
 if 'brik' in host:
@@ -85,11 +84,12 @@ def get_data():
     return mdf, sdf
 
 
-def plot_iqr_vs_age(addnoise=0, showpctile=0):
+def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
 
     if showpctile:
-        if not addnoise:
-            raise NotImplementedError
+        assert addnoise
+    if onlynamedgroups:
+        assert addnoise and showpctile
 
     ykeys = ['rel_flux_iqr', 'rel_flux_15_to_85', 'rel_flux_5_to_95',
              'rel_flux_mad']
@@ -100,6 +100,10 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0):
         f,ax = plt.subplots(figsize=(4,3))
 
         df, sdf = get_data()
+
+        if onlynamedgroups:
+            df = df[~pd.isnull(df['name'])]
+            sdf = sdf[~pd.isnull(sdf['name'])]
 
         xval = df['age']
         yval = df[ykey]
@@ -150,8 +154,14 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0):
             ax.legend(loc='upper right')
 
         titlestr = (
-            'T<14, plx>5mas, {} LCs ({} allsky)'.format(len(df), len(sdf))
+            'T<14, plx>5mas, {} LCs ({} allsky)'.
+            format(len(df), len(sdf))
         )
+        if onlynamedgroups:
+            titlestr = (
+                'T<14, plx>5mas, ONLYNAMED {} LCs ({} allsky)'.
+                format(len(df), len(sdf))
+            )
         ax.set_title(titlestr, fontsize='x-small')
 
         ax.get_yaxis().set_tick_params(which='both', direction='in',
@@ -160,16 +170,29 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0):
                                        labelsize='small', top=True, right=True)
 
         outpath = (
-            '../results/iqr_vs_age_yval_{}.png'.format(ykey)
+            '../results/'
+            'iqr_vs_age_yval_{}.png'.
+            format(ykey)
         )
         if addnoise:
             outpath = (
-                '../results/iqr_vs_age_yval_{}_addnoise.png'.format(ykey)
+                '../results/'
+                'iqr_vs_age_yval_{}_addnoise.png'.
+                format(ykey)
             )
-        if addnoise and showpctile:
+        if showpctile:
             outpath = (
-                '../results/iqr_vs_age_yval_{}_addnoise_showpctile.png'.format(ykey)
+                '../results/'
+                'iqr_vs_age_yval_{}_addnoise_showpctile.png'.
+                format(ykey)
             )
+        if onlynamedgroups:
+            outpath = (
+                '../results/'
+                'iqr_vs_age_yval_{}_addnoise_showpctile_onlynamedgroups.png'.
+                format(ykey)
+            )
+
         f.savefig(outpath, dpi=300, bbox_inches='tight')
         print('made {}'.format(outpath))
 
@@ -180,3 +203,4 @@ if __name__=="__main__":
     plot_iqr_vs_age(addnoise=0, showpctile=0)
     plot_iqr_vs_age(addnoise=1, showpctile=0)
     plot_iqr_vs_age(addnoise=1, showpctile=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, onlynamedgroups=1)
