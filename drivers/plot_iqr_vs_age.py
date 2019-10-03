@@ -18,7 +18,7 @@ host = socket.gethostname()
 if 'brik' in host:
     basedir = '/home/luke/local/stringcheese/'
 else:
-    raise NotImplementedError
+    basedir = np.nan
 
 ###############
 # main driver #
@@ -97,7 +97,7 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
     for ykey in ykeys:
 
         plt.close('all')
-        f,ax = plt.subplots(figsize=(4,3))
+        f,ax = plt.subplots(figsize=(6,3))
 
         df, sdf = get_data()
 
@@ -120,8 +120,8 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
 
         if showpctile:
 
-            bin_diff = 0.25
-            bin_min, bin_max = 7.0, 9.5
+            bin_diff = 0.20
+            bin_min, bin_max = 7.0, 9.6
             bin_left = np.arange(bin_min, bin_max-bin_diff, bin_diff)
             bin_right = bin_left+bin_diff
 
