@@ -84,12 +84,15 @@ def get_data():
     return mdf, sdf
 
 
-def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
+def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
+                    onlysubsetblue=0, onlysubsetred=0):
 
     if showpctile:
         assert addnoise
     if onlynamedgroups:
         assert addnoise and showpctile
+    if onlysubsetred or onlysubsetblue:
+        assert addnoise
 
     ykeys = ['rel_flux_iqr', 'rel_flux_15_to_85', 'rel_flux_5_to_95',
              'rel_flux_mad']
@@ -104,6 +107,26 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
         if onlynamedgroups:
             df = df[~pd.isnull(df['name'])]
             sdf = sdf[~pd.isnull(sdf['name'])]
+        if onlysubsetblue:
+            # G_Bp - G_Rp > 1.8 is rougly M dwarfs
+            sel_df = (
+                (df['phot_bp_mean_mag'] - df['phot_rp_mean_mag']) > 1.8
+            )
+            sel_sdf = (
+                (sdf['phot_bp_mean_mag'] - sdf['phot_rp_mean_mag']) > 1.8
+            )
+            df = df[sel_df]
+            sdf = sdf[sel_sdf]
+        if onlysubsetred:
+            # G_Bp - G_Rp < 1.8 is roughly FGK
+            sel_df = (
+                (df['phot_bp_mean_mag'] - df['phot_rp_mean_mag']) < 1.8
+            )
+            sel_sdf = (
+                (sdf['phot_bp_mean_mag'] - sdf['phot_rp_mean_mag']) < 1.8
+            )
+            df = df[sel_df]
+            sdf = sdf[sel_sdf]
 
         xval = df['age']
         yval = df[ykey]
@@ -120,8 +143,8 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
 
         if showpctile:
 
-            bin_diff = 0.20
-            bin_min, bin_max = 7.0, 9.6
+            bin_diff = 0.25
+            bin_min, bin_max = 7.0, 9.5
             bin_left = np.arange(bin_min, bin_max-bin_diff, bin_diff)
             bin_right = bin_left+bin_diff
 
@@ -162,6 +185,17 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
                 'T<14, plx>5mas, ONLYNAMED {} LCs ({} allsky)'.
                 format(len(df), len(sdf))
             )
+        if onlysubsetblue:
+            titlestr = (
+                'T<14, plx>5mas, ONLYBLUE {} LCs ({} allsky)'.
+                format(len(df), len(sdf))
+            )
+        if onlysubsetred:
+            titlestr = (
+                'T<14, plx>5mas, ONLYRED {} LCs ({} allsky)'.
+                format(len(df), len(sdf))
+            )
+
         ax.set_title(titlestr, fontsize='x-small')
 
         ax.get_yaxis().set_tick_params(which='both', direction='in',
@@ -169,29 +203,23 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
         ax.get_xaxis().set_tick_params(which='both', direction='in',
                                        labelsize='small', top=True, right=True)
 
+        pathstr = ''
+        if addnoise:
+            pathstr += '_addnoise'
+        if showpctile:
+            pathstr += '_showpctile'
+        if onlynamedgroups:
+            pathstr += '_onlynamedgroups'
+        if onlysubsetblue:
+            pathstr += '_onlyblue'
+        if onlysubsetred:
+            pathstr += '_onlyred'
+
         outpath = (
             '../results/'
-            'iqr_vs_age_yval_{}.png'.
-            format(ykey)
+            'iqr_vs_age_yval_{}{}.png'.
+            format(ykey, pathstr)
         )
-        if addnoise:
-            outpath = (
-                '../results/'
-                'iqr_vs_age_yval_{}_addnoise.png'.
-                format(ykey)
-            )
-        if showpctile:
-            outpath = (
-                '../results/'
-                'iqr_vs_age_yval_{}_addnoise_showpctile.png'.
-                format(ykey)
-            )
-        if onlynamedgroups:
-            outpath = (
-                '../results/'
-                'iqr_vs_age_yval_{}_addnoise_showpctile_onlynamedgroups.png'.
-                format(ykey)
-            )
 
         f.savefig(outpath, dpi=300, bbox_inches='tight')
         print('made {}'.format(outpath))
@@ -200,7 +228,15 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0):
 
 if __name__=="__main__":
 
+    # only blue / only red subsets
+    plot_iqr_vs_age(addnoise=1, showpctile=1, onlysubsetblue=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, onlysubsetred=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=0, onlysubsetblue=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=0, onlysubsetred=1)
+
+    # full lc subset
     plot_iqr_vs_age(addnoise=0, showpctile=0)
     plot_iqr_vs_age(addnoise=1, showpctile=0)
     plot_iqr_vs_age(addnoise=1, showpctile=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, onlynamedgroups=1)
     plot_iqr_vs_age(addnoise=1, showpctile=1, onlynamedgroups=1)
