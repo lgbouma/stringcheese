@@ -187,12 +187,12 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
             )
         if onlysubsetblue:
             titlestr = (
-                'T<14, plx>5mas, ONLYBLUE {} LCs ({} allsky)'.
+                'T<14, plx>5mas, (Bp-Rp>1.8, BLUE) {} LCs ({} allsky)'.
                 format(len(df), len(sdf))
             )
         if onlysubsetred:
             titlestr = (
-                'T<14, plx>5mas, ONLYRED {} LCs ({} allsky)'.
+                'T<14, plx>5mas, (Bp-Rp<1.8, RED) {} LCs ({} allsky)'.
                 format(len(df), len(sdf))
             )
 
