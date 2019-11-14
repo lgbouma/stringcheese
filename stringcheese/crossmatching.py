@@ -10,25 +10,8 @@ from astropy.coordinates import SkyCoord, search_around_sky
 from astropy import units as u, constants as const
 from astropy.time import Time
 
-from datetime import datetime
+from stringcheese.plotutils import savefig, format_ax
 
-def savefig(fig, figpath):
-    fig.savefig(figpath, dpi=450, bbox_inches='tight')
-    print('{}: made {}'.format(datetime.utcnow().isoformat(), figpath))
-
-    pdffigpath = figpath.replace('.png','.pdf')
-    fig.savefig(pdffigpath, bbox_inches='tight', rasterized=True, dpi=450)
-    print('{}: made {}'.format(datetime.utcnow().isoformat(), pdffigpath))
-
-def format_ax(ax):
-    ax.yaxis.set_ticks_position('both')
-    ax.xaxis.set_ticks_position('both')
-    ax.get_yaxis().set_tick_params(which='both', direction='in')
-    ax.get_xaxis().set_tick_params(which='both', direction='in')
-    for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_fontsize('small')
-    for tick in ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize('small')
 
 def match_kc19_to_2rxs(max_sep=12*u.arcsec):
     """
@@ -230,6 +213,8 @@ def get_kc19_to_2rxs_match_frac(max_sep=12*u.arcsec):
     out_df = count_df.merge(t2_df, left_on='group_id', right_on='Theia',
                             how='left')
 
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.width', 1000)
     print(42*'=')
     print('MAXIMUM SEPARATION: {}'.format(max_sep))
     print('SORTED BY NUMBER OF ROSAT SOURCES')
