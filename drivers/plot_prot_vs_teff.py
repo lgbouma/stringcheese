@@ -3,7 +3,8 @@ from glob import glob
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 from astropy.io import ascii as ap_ascii
 from numpy import array as nparr
-
+from astrobase.services.gaia import objectid_search
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from stringcheese import pipeline_utils as pu
 
 def get_reference_data():
@@ -102,8 +103,10 @@ def get_my_data(groupid=113, groupname='nan', classifxndate=20190907,
     return df, n_paths
 
 
-def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
-                      is_field_star_comparison=False, remove_outliers=False):
+def plot_prot_vs_teff_singlegroup(classifxndate=20190907, groupid=113,
+                                  groupname='nan',
+                                  is_field_star_comparison=False,
+                                  remove_outliers=False):
 
     praesepe_df, pleiades_df = get_reference_data()
     group_df, n_paths = get_my_data(
@@ -195,12 +198,12 @@ def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
         fs_str = ''
 
     outpath = (
-        '../results/prot_vs_teff_group{}_name{}{}.png'.
+        '../results/prot_vs_teff/prot_vs_teff_group{}_name{}{}.png'.
         format(groupid, groupname, fs_str)
     )
     if remove_outliers:
         outpath = (
-            '../results/prot_vs_teff_{}group{}_name{}_outliers_removed.png'.
+            '../results/prot_vs_teff/prot_vs_teff_{}group{}_name{}_outliers_removed.png'.
             format(fs_str, groupid, groupname)
         )
     f.savefig(outpath, dpi=300, bbox_inches='tight')
@@ -215,22 +218,169 @@ def plot_prot_vs_teff(classifxndate=20190907, groupid=113, groupname='nan',
         print(group_df[sel].source_id)
 
 
+def plot_prot_vs_teff_allgroups(classifxndate=20190907, groupids=None,
+                                groupnames=None, colorisBpmRp=0, xisBpmRp=None,
+                                xisTeff=None):
+
+    assert isinstance(groupids, list)
+    assert isinstance(groupnames, list)
+    if xisBpmRp:
+        assert not xisTeff
+    if xisTeff:
+        assert not xisBpmRp
+
+    praesepe_df, pleiades_df = get_reference_data()
+
+    outpath = '../results/prot_vs_teff/prot_vs_teff_allgroups.csv'
+
+    if not os.path.exists(outpath):
+        group_df_list = []
+        n_paths = []
+        for groupid, groupname in zip(groupids, groupnames):
+
+            i_group_df, i_n_paths = get_my_data(
+                groupid=groupid,
+                groupname=groupname,
+                classifxndate=classifxndate,
+                is_field_star_comparison=False
+            )
+            i_group_df['groupid'] = groupid
+            i_group_df['groupname'] = groupname
+
+            group_df_list.append(i_group_df)
+            n_paths.append(i_n_paths)
+
+        group_df = pd.concat(group_df_list)
+
+        kc19_df = pd.read_csv('../data/string_table2.csv')
+
+        group_df = group_df.merge(kc19_df[['group_id','age','parallax']],
+                                  left_on='groupid', right_on='group_id',
+                                  how='left')
+        group_df = group_df.drop('group_id', axis=1)
+
+        gaia_info_list = []
+        for sid in nparr(group_df['source_id']):
+            res = objectid_search(sid)
+            gaia_info_list.append(pd.read_csv(res['result']))
+        gaia_info_df = pd.concat(gaia_info_list)
+
+        group_df = group_df.merge(gaia_info_df, on='source_id')
+        group_df.to_csv(outpath, index=False)
+        print('made {}'.format(outpath))
+
+    else:
+        group_df = pd.read_csv(outpath)
+
+    ##########################################
+
+    plt.close('all')
+    f,ax = plt.subplots(figsize=(4,3))
+
+    if xisTeff:
+        ax.scatter(
+            nparr(praesepe_df['Teff']), nparr(praesepe_df['Prot']),
+            color='gray', edgecolors='k',
+            alpha=1, linewidths=0.4, zorder=2, s=6, marker='s',
+            label='Praesepe 670 Myr'
+        )
+        ax.scatter(
+            nparr(pleiades_df['teff']), nparr(pleiades_df['prot']),
+            color='whitesmoke', edgecolors='gray',
+            alpha=1, linewidths=0.4, zorder=1, s=6, marker='X',
+            label='Pleiades 120 Myr'
+        )
+
+    cval = nparr(group_df['age'])
+    if xisTeff:
+        xval = nparr(group_df['teff']).astype(float)
+    if xisBpmRp:
+        xval = nparr(group_df['phot_bp_mean_mag'] - group_df['phot_rp_mean_mag'])
+    yval = nparr(group_df['prot']).astype(float)
+
+    cm = ax.scatter(
+        xval, yval,
+        c=cval, edgecolors='k',
+        cmap='plasma',
+        alpha=1, linewidths=0.4, zorder=3, s=9, marker='o',
+    )
+
+    divider0 = make_axes_locatable(ax)
+    cax0 = divider0.append_axes('right', size='5%', pad=0.05)
+    cbar = f.colorbar(cm, ax=ax, cax=cax0)
+    cbar.set_label('age')
+
+    ax.legend(loc='best', fontsize='x-small')
+
+    ax.set_ylim((0,16.2))
+
+    if xisBpmRp:
+        ax.set_xlabel('Bp-Rp')
+    if xisTeff:
+        ax.set_xlabel('Teff [K]')
+        ax.set_xlim((8000,3000))
+    ax.set_ylabel('Rotation period [days]')
+
+    ax.get_yaxis().set_tick_params(which='both', direction='in',
+                                   labelsize='small', top=True, right=True)
+    ax.get_xaxis().set_tick_params(which='both', direction='in',
+                                   labelsize='small', top=True, right=True)
+
+    if xisBpmRp:
+        outpath = '../results/prot_vs_teff/prot_vs_teff_allgroups_xisBpmRp.png'
+    if xisTeff:
+        outpath = '../results/prot_vs_teff/prot_vs_teff_allgroups_xisTeff.png'
+    f.savefig(outpath, dpi=300, bbox_inches='tight')
+    print('made {}'.format(outpath))
+
+
 
 if __name__ == "__main__":
 
-    plot_prot_vs_teff(groupid=113, groupname='nan',
-                      classifxndate=20190910)
+    group113_special = 0
+    individual_groups = 0
+    all_groups = 1
 
-    plot_prot_vs_teff(groupid=113, groupname='nan',
-                      classifxndate=20190910, remove_outliers=True)
+    if all_groups:
+
+        allgroupids = [113, 208, 424,
+                       676, 508, 509,
+                       676, 786, 1089]
+        groupnames = ['nan', 'Columba','nan',
+                      'nan', 'nan', 'nan',
+                      'nan', 'nan', 'nan']
+
+        plot_prot_vs_teff_allgroups(groupids=allgroupids,
+                                    groupnames=groupnames, xisBpmRp=1)
+
+        plot_prot_vs_teff_allgroups(groupids=allgroupids,
+                                    groupnames=groupnames, xisTeff=1)
 
 
-    plot_prot_vs_teff(groupid=113, groupname='nan',
-                      classifxndate=20190910, is_field_star_comparison=True)
+    #
+    # rotation period plots for each group with rotation period measurements
+    #
+    if individual_groups:
+        newgroupids = [676, 424, 113, 1089, 508, 509, 786]
 
-    # nangroupids = [676, 424, 113, 1089, 508, 509, 786]
+        for newgroupid in newgroupids:
+            plot_prot_vs_teff_singlegroup(groupid=newgroupid, groupname='nan')
 
-    # for nangroupid in nangroupids:
-    #     plot_prot_vs_teff(groupid=nangroupid, groupname='nan')
+        plot_prot_vs_teff_singlegroup(groupid=208, groupname='Columba')
 
-    # plot_prot_vs_teff(groupid=208, groupname='Columba')
+
+    #
+    # group 113 specific processing
+    #
+    if group113_special:
+
+        plot_prot_vs_teff_singlegroup(groupid=113, groupname='nan',
+                                      classifxndate=20190910)
+
+        plot_prot_vs_teff_singlegroup(groupid=113, groupname='nan',
+                                      classifxndate=20190910,
+                                      remove_outliers=True)
+
+        plot_prot_vs_teff_singlegroup(groupid=113, groupname='nan',
+                                      classifxndate=20190910,
+                                      is_field_star_comparison=True)
