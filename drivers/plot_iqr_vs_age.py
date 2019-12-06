@@ -9,6 +9,7 @@ import os, socket, requests
 from glob import glob
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 from numpy import array as nparr
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from scipy.stats import iqr
 
@@ -85,13 +86,13 @@ def get_data():
 
 
 def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
-                    onlysubsetblue=0, onlysubsetred=0):
+                    onlysubsetblue=0, onlysubsetred=0, colorbybpmrp=0):
 
     if showpctile:
         assert addnoise
     if onlynamedgroups:
         assert addnoise and showpctile
-    if onlysubsetred or onlysubsetblue:
+    if onlysubsetred or onlysubsetblue or colorbybpmrp:
         assert addnoise
 
     ykeys = ['rel_flux_iqr', 'rel_flux_15_to_85', 'rel_flux_5_to_95',
@@ -107,7 +108,7 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
         if onlynamedgroups:
             df = df[~pd.isnull(df['name'])]
             sdf = sdf[~pd.isnull(sdf['name'])]
-        if onlysubsetblue:
+        if onlysubsetred:
             # G_Bp - G_Rp > 1.8 is rougly M dwarfs
             sel_df = (
                 (df['phot_bp_mean_mag'] - df['phot_rp_mean_mag']) > 1.8
@@ -117,7 +118,7 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
             )
             df = df[sel_df]
             sdf = sdf[sel_sdf]
-        if onlysubsetred:
+        if onlysubsetblue:
             # G_Bp - G_Rp < 1.8 is roughly FGK
             sel_df = (
                 (df['phot_bp_mean_mag'] - df['phot_rp_mean_mag']) < 1.8
@@ -135,11 +136,25 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
             np.random.seed(42)
             xval += np.random.uniform(-0.1, 0.1, size=len(df))
 
-        ax.scatter(
-            xval, yval,
-            color='black', edgecolors='k',
-            alpha=1, linewidths=0.4, zorder=2, s=3, marker='o',
-        )
+        if not colorbybpmrp:
+            ax.scatter(
+                xval, yval,
+                color='black', edgecolors='k',
+                alpha=1, linewidths=0.4, zorder=2, s=3, marker='o',
+            )
+        elif colorbybpmrp:
+            cval = nparr(df['phot_bp_mean_mag'] - df['phot_rp_mean_mag'])
+            cm = ax.scatter(
+                xval, yval,
+                c=cval, edgecolors='k',
+                cmap='plasma',
+                alpha=1, linewidths=0.4, zorder=2, s=3, marker='o',
+            )
+
+            divider0 = make_axes_locatable(ax)
+            cax0 = divider0.append_axes('right', size='5%', pad=0.05)
+            cbar = f.colorbar(cm, ax=ax, cax=cax0)
+            cbar.set_label('Bp-Rp')
 
         if showpctile:
 
@@ -187,12 +202,12 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
             )
         if onlysubsetblue:
             titlestr = (
-                'T<14, plx>5mas, (Bp-Rp>1.8, BLUE) {} LCs ({} allsky)'.
+                'T<14, plx>5mas, (Bp-Rp<1.8, BLUE) {} LCs ({} allsky)'.
                 format(len(df), len(sdf))
             )
         if onlysubsetred:
             titlestr = (
-                'T<14, plx>5mas, (Bp-Rp<1.8, RED) {} LCs ({} allsky)'.
+                'T<14, plx>5mas, (Bp-Rp>1.8, RED) {} LCs ({} allsky)'.
                 format(len(df), len(sdf))
             )
 
@@ -214,9 +229,11 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
             pathstr += '_onlyblue'
         if onlysubsetred:
             pathstr += '_onlyred'
+        if colorbybpmrp:
+            pathstr += '_colorbybpmrp'
 
         outpath = (
-            '../results/'
+            '../results/iqr_vs_age/'
             'iqr_vs_age_yval_{}{}.png'.
             format(ykey, pathstr)
         )
@@ -227,6 +244,15 @@ def plot_iqr_vs_age(addnoise=0, showpctile=0, onlynamedgroups=0,
 
 
 if __name__=="__main__":
+
+    # color by bp-rp
+    plot_iqr_vs_age(addnoise=1, colorbybpmrp=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, colorbybpmrp=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, colorbybpmrp=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=0, onlysubsetblue=1, colorbybpmrp=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=0, onlysubsetred=1, colorbybpmrp=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, onlysubsetblue=1, colorbybpmrp=1)
+    plot_iqr_vs_age(addnoise=1, showpctile=1, onlysubsetred=1, colorbybpmrp=1)
 
     # only blue / only red subsets
     plot_iqr_vs_age(addnoise=1, showpctile=1, onlysubsetblue=1)
