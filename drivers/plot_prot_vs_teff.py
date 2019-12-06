@@ -220,14 +220,16 @@ def plot_prot_vs_teff_singlegroup(classifxndate=20190907, groupid=113,
 
 def plot_prot_vs_teff_allgroups(classifxndate=20190907, groupids=None,
                                 groupnames=None, colorisBpmRp=0, xisBpmRp=None,
-                                xisTeff=None):
+                                xisTeff=None, xisAge=None):
 
     assert isinstance(groupids, list)
     assert isinstance(groupnames, list)
     if xisBpmRp:
-        assert not xisTeff
+        assert not xisTeff and not xisAge
     if xisTeff:
-        assert not xisBpmRp
+        assert not xisBpmRp and not xisAge
+    if xisAge:
+        assert not xisBpmRp and not xisTeff
 
     praesepe_df, pleiades_df = get_reference_data()
 
@@ -291,11 +293,22 @@ def plot_prot_vs_teff_allgroups(classifxndate=20190907, groupids=None,
             label='Pleiades 120 Myr'
         )
 
-    cval = nparr(group_df['age'])
+    if xisTeff or xisBpmRp:
+        cval = nparr(group_df['age'])
+    if xisAge:
+        cval = (
+            nparr(group_df['phot_bp_mean_mag'] - group_df['phot_rp_mean_mag'])
+        )
+
     if xisTeff:
         xval = nparr(group_df['teff']).astype(float)
     if xisBpmRp:
         xval = nparr(group_df['phot_bp_mean_mag'] - group_df['phot_rp_mean_mag'])
+    if xisAge:
+        xval = nparr(group_df['age'])
+        np.random.seed(42)
+        xval += np.random.uniform(-0.1, 0.1, size=len(group_df))
+
     yval = nparr(group_df['prot']).astype(float)
 
     cm = ax.scatter(
@@ -309,6 +322,8 @@ def plot_prot_vs_teff_allgroups(classifxndate=20190907, groupids=None,
     cax0 = divider0.append_axes('right', size='5%', pad=0.05)
     cbar = f.colorbar(cm, ax=ax, cax=cax0)
     cbar.set_label('age')
+    if xisAge:
+        cbar.set_label('Bp-Rp')
 
     ax.legend(loc='best', fontsize='x-small')
 
@@ -319,6 +334,9 @@ def plot_prot_vs_teff_allgroups(classifxndate=20190907, groupids=None,
     if xisTeff:
         ax.set_xlabel('Teff [K]')
         ax.set_xlim((8000,3000))
+    if xisAge:
+        ax.set_xlabel('log(age[yr])')
+
     ax.set_ylabel('Rotation period [days]')
 
     ax.get_yaxis().set_tick_params(which='both', direction='in',
@@ -330,6 +348,9 @@ def plot_prot_vs_teff_allgroups(classifxndate=20190907, groupids=None,
         outpath = '../results/prot_vs_teff/prot_vs_teff_allgroups_xisBpmRp.png'
     if xisTeff:
         outpath = '../results/prot_vs_teff/prot_vs_teff_allgroups_xisTeff.png'
+    if xisAge:
+        outpath = '../results/prot_vs_teff/prot_vs_teff_allgroups_xisAge.png'
+
     f.savefig(outpath, dpi=300, bbox_inches='tight')
     print('made {}'.format(outpath))
 
@@ -355,6 +376,9 @@ if __name__ == "__main__":
 
         plot_prot_vs_teff_allgroups(groupids=allgroupids,
                                     groupnames=groupnames, xisTeff=1)
+
+        plot_prot_vs_teff_allgroups(groupids=allgroupids,
+                                    groupnames=groupnames, xisAge=1)
 
 
     #
