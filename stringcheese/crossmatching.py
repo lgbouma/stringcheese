@@ -12,6 +12,76 @@ from astropy.time import Time
 
 from stringcheese.plotutils import savefig, format_ax
 
+def match_kc19_to_cs16(max_sep=3*u.arcsec):
+    """
+    Match Kounkel & Covey 2019 to Cotten & Song 2016, which claims to be the
+    most comprehensive list of IR excess stars in existence.
+    """
+
+    csvpath = '../data/kc19_to_cs16_within_{}_arcsec.csv'.format(max_sep.value)
+
+    if not os.path.exists(csvpath):
+
+        #
+        # Get Cotten & Song 2016 IR excess sources.
+        #
+        raise NotImplementedError
+        t = Vizier.query
+        # J/ApJS/225/15/table5
+        #TODO
+
+        #FIXME #TODO
+        #FIXME #TODO
+        #FIXME #TODO
+        #FIXME #TODO
+
+
+def plot_kc19_to_2rxs_age_vs_parallax(max_sep=12*u.arcsec, overwrite=0):
+    #
+    # Compare KC2019 isochrone ages for things with matches to things without.
+    #
+
+    outpath = (
+        '../results/crossmatching/kc19_to_2rxs_age_vs_parallax_sep{}.png'.
+        format(max_sep.value)
+    )
+
+    if not os.path.exists(outpath) or overwrite:
+
+        kc19_match_df, df = match_kc19_to_2rxs(max_sep=max_sep)
+
+        plt.close('all')
+        f, ax = plt.subplots(figsize=(4,3))
+
+        label = 'KC2019: {} sources'.format(len(df))
+        ax.scatter(df.age, 1/(1e-3*df.parallax), label=label, c='gray',
+                   marker='o', zorder=2, rasterized=True, s=1, linewidths=0)
+
+        label = (
+            'KC2019 & ROSAT match < {}": {} sources'.
+            format(int(max_sep.value), len(kc19_match_df))
+        )
+
+        ax.scatter(kc19_match_df.age, 1/(1e-3*kc19_match_df.parallax), label=label,
+                   c='k', marker='*', zorder=3, rasterized=True, s=5, linewidths=0)
+
+        ax.legend(loc='best', fontsize='xx-small')
+
+        format_ax(ax)
+
+        ax.set_xlabel('KC2019 log10(isochrone age)')
+        ax.set_ylabel('dist [pc] = 1/(parallax [arcsec])')
+        ax.set_yscale('log')
+
+        f.tight_layout(pad=0.2)
+        savefig(f, outpath)
+
+    else:
+        print('found {}'.format(outpath))
+
+
+
+
 
 def match_kc19_to_2rxs(max_sep=12*u.arcsec):
     """
